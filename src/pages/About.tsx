@@ -23,7 +23,7 @@ const About = () => (
       <div className="grid md:grid-cols-3 gap-6">
         {[
           { icon: Star, title: 'Quality First', desc: 'Every product undergoes strict quality checks before it reaches you.' },
-          { icon: Palette, title: 'Thoughtful Curation', desc: 'We don't carry everything — just things worth having.' },
+          { icon: Palette, title: 'Thoughtful Curation', desc: "We don't carry everything — just things worth having." },
           { icon: Shield, title: 'Customer Trust', desc: 'Transparent pricing, easy returns, and support that actually helps.' },
         ].map((card, i) => (
           <motion.div key={i} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="bg-blue-soft rounded-card p-6 text-center">
