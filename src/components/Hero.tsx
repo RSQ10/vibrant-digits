@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Lock, Star, Truck } from 'lucide-react';
+import heroImage from '@/assets/hero-image.jpg';
 
 export const Hero = () => (
   <section className="w-full bg-background">
@@ -44,12 +45,13 @@ export const Hero = () => (
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
-        <div className="relative w-full max-w-md aspect-square rounded-card bg-blue-soft flex items-center justify-center overflow-hidden shadow-hover">
-          <div className="text-center p-8">
-            <p className="text-6xl mb-4">✨</p>
-            <p className="text-heading font-semibold text-lg">Premium Quality</p>
-            <p className="text-body text-sm mt-1">Curated just for you</p>
-          </div>
+        <div className="relative w-full max-w-md aspect-square rounded-card overflow-hidden shadow-hover">
+          <img
+            src={heroImage}
+            alt="Premium gadgets collection featuring earbuds, smartwatch, speaker, LED lights and power bank"
+            className="w-full h-full object-cover"
+            loading="eager"
+          />
         </div>
       </motion.div>
     </div>
