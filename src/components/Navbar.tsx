@@ -59,8 +59,8 @@ export const Navbar = () => {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[280px]">
-              <SheetTitle className="text-lg font-bold text-heading mb-6">
-                Glow <span className="text-primary">&</span> Gadgets
+              <SheetTitle className="mb-6">
+                <img src={logo} alt="Glow & Gadgets" className="h-10 w-auto object-contain" />
               </SheetTitle>
               <div className="flex flex-col gap-4">
                 {navLinks.map(link => (
