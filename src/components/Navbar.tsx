@@ -4,6 +4,7 @@ import { Search, User, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CartDrawer } from './CartDrawer';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import logo from '@/assets/logo.jpg';
 
 const navLinks = [
   { label: 'Home', path: '/' },
@@ -21,8 +22,8 @@ export const Navbar = () => {
     <nav className="sticky top-0 z-50 w-full h-[72px] bg-background border-b border-border flex items-center">
       <div className="container mx-auto flex items-center justify-between px-4 lg:px-8">
         {/* Logo */}
-        <Link to="/" className="text-xl font-bold text-heading tracking-tight">
-          Glow <span className="text-primary">&</span> Gadgets
+        <Link to="/" className="flex items-center gap-2">
+          <img src={logo} alt="Glow & Gadgets" className="h-10 w-auto object-contain" />
         </Link>
 
         {/* Desktop Nav */}
