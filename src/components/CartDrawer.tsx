@@ -1,11 +1,137 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ShoppingCart, Minus, Plus, Trash2, ExternalLink, Loader2, CreditCard, Banknote, Gift, X } from "lucide-react";
+import { ShoppingCart, Minus, Plus, Trash2, ExternalLink, Loader2, CreditCard, Banknote, Gift, X, ShieldCheck, Sparkles } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { motion, AnimatePresence } from "framer-motion";
+
+const PrepaidPopup = ({
+  open,
+  onClose,
+  totalPrice,
+  onPayPrepaid,
+  onPayCOD,
+}: {
+  open: boolean;
+  onClose: () => void;
+  totalPrice: number;
+  onPayPrepaid: () => void;
+  onPayCOD: () => void;
+}) => {
+  if (!open) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          {/* Backdrop */}
+          <motion.div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+
+          {/* Modal */}
+          <motion.div
+            className="relative z-10 w-[92vw] max-w-md rounded-2xl bg-background shadow-2xl overflow-hidden"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          >
+            {/* Close button */}
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center hover:bg-muted transition-colors"
+            >
+              <X className="w-4 h-4 text-muted-foreground" />
+            </button>
+
+            {/* Header with gradient */}
+            <div className="relative bg-gradient-to-br from-primary via-primary to-primary/80 p-6 pb-8 text-center">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                className="mx-auto mb-3 w-16 h-16 rounded-full bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center"
+              >
+                <Sparkles className="w-8 h-8 text-primary-foreground" />
+              </motion.div>
+              <h2 className="text-xl font-bold text-primary-foreground mb-1">
+                Save ₹40 Instantly! 🎉
+              </h2>
+              <p className="text-sm text-primary-foreground/80">
+                Switch to online payment & save more
+              </p>
+              {/* Price comparison */}
+              <div className="mt-4 inline-flex items-center gap-3 bg-primary-foreground/15 backdrop-blur-sm rounded-full px-5 py-2">
+                <span className="text-primary-foreground/60 line-through text-sm">₹{totalPrice.toFixed(0)}</span>
+                <span className="text-primary-foreground font-bold text-lg">₹{Math.max(0, totalPrice - 40).toFixed(0)}</span>
+              </div>
+            </div>
+
+            {/* Options */}
+            <div className="p-5 space-y-3">
+              {/* Prepaid - Recommended */}
+              <motion.button
+                onClick={onPayPrepaid}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-primary bg-primary/5 hover:bg-primary/10 transition-all cursor-pointer relative overflow-hidden"
+                whileHover={{ scale: 1.015 }}
+                whileTap={{ scale: 0.99 }}
+              >
+                <span className="absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] font-bold px-2.5 py-0.5 rounded-bl-lg">
+                  RECOMMENDED
+                </span>
+                <div className="w-11 h-11 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                  <CreditCard className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-heading text-sm">Pay Online</span>
+                    <span className="text-[10px] font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">SAVE ₹40</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">UPI · Cards · Net Banking · Wallets</p>
+                </div>
+                <div className="text-right flex-shrink-0 pr-1">
+                  <div className="text-sm font-bold text-primary">₹{Math.max(0, totalPrice - 40).toFixed(0)}</div>
+                </div>
+              </motion.button>
+
+              {/* COD */}
+              <motion.button
+                onClick={onPayCOD}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-muted-foreground/30 transition-all cursor-pointer"
+                whileHover={{ scale: 1.015 }}
+                whileTap={{ scale: 0.99 }}
+              >
+                <div className="w-11 h-11 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                  <Banknote className="w-5 h-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1 text-left">
+                  <span className="font-medium text-body text-sm">Cash on Delivery</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">Pay when you receive your order</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <div className="text-sm font-semibold text-body">₹{totalPrice.toFixed(0)}</div>
+                </div>
+              </motion.button>
+
+              <div className="flex items-center justify-center gap-1.5 pt-2 text-muted-foreground">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <p className="text-[11px]">100% secure · Free shipping on prepaid</p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>,
+    document.body
+  );
+};
 
 export const CartDrawer = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,16 +152,8 @@ export const CartDrawer = () => {
   };
 
   const handleCheckout = () => {
-    // Show prepaid incentive popup before redirecting
-    setShowPrepaidPopup(true);
-  };
-
-  const handlePayPrepaid = () => {
-    proceedToCheckout();
-  };
-
-  const handlePayCOD = () => {
-    proceedToCheckout();
+    setIsOpen(false); // Close sheet first
+    setTimeout(() => setShowPrepaidPopup(true), 300); // Then show popup after sheet animation
   };
 
   return (
@@ -114,72 +232,13 @@ export const CartDrawer = () => {
         </SheetContent>
       </Sheet>
 
-      {/* Prepaid Incentive Popup */}
-      <Dialog open={showPrepaidPopup} onOpenChange={setShowPrepaidPopup}>
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-2xl border-0">
-          <div className="bg-gradient-to-br from-primary/10 via-blue-soft to-primary/5 p-6 pb-4">
-            <DialogHeader>
-              <div className="mx-auto mb-3 w-14 h-14 rounded-full bg-primary/15 flex items-center justify-center">
-                <Gift className="w-7 h-7 text-primary" />
-              </div>
-              <DialogTitle className="text-center text-xl text-heading">
-                Save ₹40 Instantly! 🎉
-              </DialogTitle>
-              <DialogDescription className="text-center text-body mt-2">
-                Pay online and get <span className="font-bold text-primary">₹40 OFF</span> on your order. No coupon needed!
-              </DialogDescription>
-            </DialogHeader>
-          </div>
-
-          <div className="p-6 space-y-3">
-            {/* Prepaid Option - Highlighted */}
-            <motion.button
-              onClick={handlePayPrepaid}
-              className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-primary bg-primary/5 hover:bg-primary/10 transition-all group cursor-pointer"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-            >
-              <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                <CreditCard className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-heading">Pay Online</span>
-                  <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">SAVE ₹40</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">UPI, Cards, Net Banking, Wallets</p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <div className="text-sm font-bold text-primary">₹{Math.max(0, totalPrice - 40).toFixed(0)}</div>
-                <div className="text-xs text-muted-foreground line-through">₹{totalPrice.toFixed(0)}</div>
-              </div>
-            </motion.button>
-
-            {/* COD Option */}
-            <motion.button
-              onClick={handlePayCOD}
-              className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-muted-foreground/30 transition-all group cursor-pointer"
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-            >
-              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                <Banknote className="w-5 h-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1 text-left">
-                <span className="font-medium text-body">Cash on Delivery</span>
-                <p className="text-xs text-muted-foreground mt-0.5">Pay when you receive</p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <div className="text-sm font-semibold text-body">₹{totalPrice.toFixed(0)}</div>
-              </div>
-            </motion.button>
-
-            <p className="text-[11px] text-center text-muted-foreground pt-2">
-              🔒 100% secure payment · Free shipping on prepaid orders
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PrepaidPopup
+        open={showPrepaidPopup}
+        onClose={() => setShowPrepaidPopup(false)}
+        totalPrice={totalPrice}
+        onPayPrepaid={proceedToCheckout}
+        onPayCOD={proceedToCheckout}
+      />
     </>
   );
 };
