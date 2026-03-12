@@ -23,7 +23,7 @@ export const Navbar = () => {
       <div className="container mx-auto flex items-center justify-between px-4 lg:px-8">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <img src={logo} alt="Glow & Gadgets" className="h-10 w-auto object-contain" />
+          <img src={logo} alt="Glow & Gadgets" className="h-14 sm:h-16 w-auto object-contain" />
         </Link>
 
         {/* Desktop Nav */}
