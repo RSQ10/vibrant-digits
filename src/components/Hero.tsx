@@ -15,93 +15,124 @@ const HeroCanvas = () => {
     if (!ctx) return;
 
     let animId: number;
-    let time = 0;
+    let tick = 0;
+
+    const isMobile = window.innerWidth < 768;
+    const particleCount = isMobile ? 30 : 60;
 
     const resize = () => {
-      const rect = canvas.parentElement!.getBoundingClientRect();
-      canvas.width = rect.width * devicePixelRatio;
-      canvas.height = rect.height * devicePixelRatio;
-      canvas.style.width = rect.width + 'px';
-      canvas.style.height = rect.height + 'px';
-      ctx.scale(devicePixelRatio, devicePixelRatio);
+      const parent = canvas.parentElement!;
+      const w = parent.offsetWidth;
+      const h = parent.offsetHeight;
+      const dpr = devicePixelRatio || 1;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize();
     window.addEventListener('resize', resize);
 
-    // Particles
-    const particles = Array.from({ length: 55 }, () => ({
-      x: Math.random() * 600,
-      y: Math.random() * 600,
-      r: 0.5 + Math.random() * 2.5,
-      a: 0.08 + Math.random() * 0.27,
-      vx: (Math.random() - 0.5) * 0.8,
-      vy: (Math.random() - 0.5) * 0.8,
-    }));
+    // Ring config
+    const ringRadii = [62, 118, 174, 230];
+    const ringSpeeds = [0.006, -0.004, 0.005, -0.003];
+    const ringAngles = [0, 0, 0, 0];
 
-    // Line segments
-    const lines = Array.from({ length: 12 }, () => newLine());
-    function newLine() {
-      const len = 20 + Math.random() * 60;
-      const angle = Math.random() * Math.PI * 2;
+    // Particles
+    function newParticle(w: number, h: number) {
       return {
-        x: Math.random() * 600,
-        y: Math.random() * 600,
-        dx: Math.cos(angle) * len,
-        dy: Math.sin(angle) * len,
+        x: Math.random() * (w || 500),
+        y: Math.random() * (h || 500),
+        r: 0.6 + Math.random() * 2.2,
+        alpha: 0.06 + Math.random() * 0.26,
+        vx: (Math.random() - 0.5) * 0.7,
+        vy: (Math.random() - 0.5) * 0.7,
         life: 0,
-        maxLife: 120 + Math.random() * 180,
-        a: 0.02 + Math.random() * 0.08,
+        maxLife: 220 + Math.random() * 280,
       };
     }
+    const particles = Array.from({ length: particleCount }, () => newParticle(500, 500));
 
-    const rings = [60, 115, 170, 225];
-    const speeds = [0.003, -0.005, 0.004, -0.002];
+    // Lines
+    function newLine(w: number, h: number) {
+      const len = 24 + Math.random() * 48;
+      const angle = Math.random() * Math.PI * 2;
+      const x1 = Math.random() * (w || 500);
+      const y1 = Math.random() * (h || 500);
+      return {
+        x1, y1,
+        x2: x1 + Math.cos(angle) * len,
+        y2: y1 + Math.sin(angle) * len,
+        life: 0,
+        maxLife: 80 + Math.random() * 100,
+        baseAlpha: 0.03 + Math.random() * 0.06,
+      };
+    }
+    const lines = Array.from({ length: 14 }, () => newLine(500, 500));
 
     const draw = () => {
-      const w = canvas.width / devicePixelRatio;
-      const h = canvas.height / devicePixelRatio;
-      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-      ctx.clearRect(0, 0, w, h);
+      if (document.visibilityState === 'hidden') {
+        animId = requestAnimationFrame(draw);
+        return;
+      }
 
-      // BG gradient
-      const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) / 2);
-      grad.addColorStop(0, 'rgba(37,99,235,0.04)');
-      grad.addColorStop(1, 'transparent');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
+      const dpr = devicePixelRatio || 1;
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
 
       const cx = w / 2;
       const cy = h / 2;
 
-      // Layer 1 — Rings
-      rings.forEach((r, i) => {
-        const scale = 1 + Math.sin(time * 0.01 + i) * 0.02;
-        const angle = time * speeds[i];
+      // Layer 1 — Orbital Rings
+      const scale = 1 + Math.sin(tick * 0.018) * 0.018;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(scale, scale);
+      ctx.translate(-cx, -cy);
+
+      ringRadii.forEach((r, i) => {
+        // Ring stroke
         ctx.beginPath();
-        ctx.arc(cx, cy, r * scale, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(37,99,235,0.12)';
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(37,99,235,0.10)';
         ctx.lineWidth = 0.5;
         ctx.stroke();
-        // Orbiting dot
-        const dx = Math.cos(angle) * r * scale;
-        const dy = Math.sin(angle) * r * scale;
+
+        // Update angle
+        ringAngles[i] += ringSpeeds[i];
+        const a = ringAngles[i];
+        const dotX = cx + Math.cos(a) * r;
+        const dotY = cy + Math.sin(a) * r;
+
+        // Glow behind dot
         ctx.beginPath();
-        ctx.arc(cx + dx, cy + dy, 3, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(37,99,235,0.5)';
+        ctx.arc(dotX, dotY, 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(37,99,235,0.12)';
+        ctx.fill();
+
+        // Dot
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(37,99,235,0.55)';
         ctx.fill();
       });
+      ctx.restore();
 
       // Layer 2 — Particles
-      particles.forEach((p) => {
+      particles.forEach((p, i) => {
         p.x += p.vx;
         p.y += p.vy;
-        if (p.x < -5 || p.x > w + 5 || p.y < -5 || p.y > h + 5) {
-          p.x = Math.random() * w;
-          p.y = Math.random() * h;
+        p.life++;
+        if (p.life > p.maxLife || p.x < -5 || p.x > w + 5 || p.y < -5 || p.y > h + 5) {
+          particles[i] = newParticle(w, h);
+          return;
         }
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(37,99,235,${p.a})`;
+        ctx.fillStyle = `rgba(37,99,235,${p.alpha})`;
         ctx.fill();
       });
 
@@ -109,22 +140,29 @@ const HeroCanvas = () => {
       lines.forEach((l, i) => {
         l.life++;
         if (l.life > l.maxLife) {
-          lines[i] = newLine();
-          lines[i].x = Math.random() * w;
-          lines[i].y = Math.random() * h;
+          lines[i] = newLine(w, h);
           return;
         }
-        const progress = l.life / l.maxLife;
-        const fade = progress < 0.2 ? progress / 0.2 : progress > 0.7 ? (1 - progress) / 0.3 : 1;
+        const t = l.life / l.maxLife;
+        let alpha = l.baseAlpha;
+        if (t < 0.25) alpha = l.baseAlpha * (t / 0.25);
+        else if (t > 0.75) alpha = l.baseAlpha * ((1 - t) / 0.25);
         ctx.beginPath();
-        ctx.moveTo(l.x, l.y);
-        ctx.lineTo(l.x + l.dx, l.y + l.dy);
-        ctx.strokeStyle = `rgba(37,99,235,${l.a * fade})`;
+        ctx.moveTo(l.x1, l.y1);
+        ctx.lineTo(l.x2, l.y2);
+        ctx.strokeStyle = `rgba(37,99,235,${alpha})`;
         ctx.lineWidth = 0.5;
         ctx.stroke();
       });
 
-      time++;
+      // Layer 4 — Center radial glow
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 180);
+      glow.addColorStop(0, 'rgba(37,99,235,0.05)');
+      glow.addColorStop(1, 'rgba(37,99,235,0.00)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, w, h);
+
+      tick++;
       animId = requestAnimationFrame(draw);
     };
     draw();
@@ -139,7 +177,7 @@ const HeroCanvas = () => {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full"
-      style={{ zIndex: 1 }}
+      style={{ zIndex: 1, pointerEvents: 'none' }}
     />
   );
 };
@@ -180,7 +218,7 @@ export const Hero = () => (
 
       {/* Right */}
       <motion.div
-        className="flex-1 flex justify-center relative"
+        className="flex-1 flex justify-center relative overflow-hidden"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3, delay: 0.1 }}
