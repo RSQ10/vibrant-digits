@@ -5,7 +5,7 @@ const messages = [
   "🔥 Limited Stock — Grab Yours Before It's Gone!",
   "✨ Save 10% — Pay via UPI or Card at Checkout",
   "🚀 Order Today · Delivered in 3–5 Days",
-  "💥 Up to 56% OFF on Selected Products",
+  "💥 Up to 60% OFF on Selected Products",
   "📦 Free Dispatch Within 24 Hours",
   "🛡️ 100% Secure — UPI · Cards · COD",
   "↩️ Easy 7-Day Returns. No Questions Asked.",
