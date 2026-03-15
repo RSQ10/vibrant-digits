@@ -60,7 +60,7 @@ export const Navbar = () => {
             </SheetTrigger>
             <SheetContent side="left" className="w-[280px]">
               <SheetTitle className="mb-6">
-                <img src={logo} alt="Glow & Gadgets" className="h-14 w-auto object-contain" />
+                <img src={logo} alt="Glow & Gadgets" className="h-16 w-auto object-contain" />
               </SheetTitle>
               <div className="flex flex-col gap-4">
                 {navLinks.map(link => (
