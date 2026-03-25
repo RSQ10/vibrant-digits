@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Lock, Star, Truck, Sparkles, ArrowRight } from 'lucide-react';
+import heroImage from '@/assets/hero-home-decor.jpg';
 
 const HeroSvgScene = () => (
   <div className="relative w-full h-full min-h-[400px] lg:min-h-[480px] flex items-center justify-center">
@@ -196,14 +197,22 @@ export const Hero = () => (
         </motion.div>
       </motion.div>
 
-      {/* Right Column — SVG Illustration */}
+      {/* Right Column — Hero Image */}
       <motion.div
-        className="flex-1"
+        className="flex-1 flex items-center justify-center"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6, delay: 0.3 }}
       >
-        <HeroSvgScene />
+        <div className="relative rounded-2xl overflow-hidden shadow-2xl shadow-primary/10">
+          <img
+            src={heroImage}
+            alt="Smart gadgets and home décor lifestyle scene featuring a moon lamp, smart watch, and decorative items"
+            width={1024}
+            height={1024}
+            className="w-full max-w-[520px] h-auto object-cover rounded-2xl"
+          />
+        </div>
       </motion.div>
     </div>
   </section>
