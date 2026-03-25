@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Lock, Star, Truck, Sparkles, ArrowRight } from 'lucide-react';
+import heroImage from '@/assets/hero-home-decor.jpg';
 
 const HeroSvgScene = () => (
   <div className="relative w-full h-full min-h-[400px] lg:min-h-[480px] flex items-center justify-center">
