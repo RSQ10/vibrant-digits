@@ -169,6 +169,33 @@ export const COLLECTION_PRODUCTS_QUERY = `
   }
 `;
 
+export const NEWEST_PRODUCTS_QUERY = `
+  query GetNewestProducts($first: Int!) {
+    products(first: $first, sortKey: CREATED_AT, reverse: true) {
+      edges {
+        node {
+          id title description handle tags
+          priceRange { minVariantPrice { amount currencyCode } }
+          compareAtPriceRange { minVariantPrice { amount currencyCode } }
+          images(first: 5) { edges { node { url altText } } }
+          variants(first: 10) {
+            edges {
+              node {
+                id title
+                price { amount currencyCode }
+                compareAtPrice { amount currencyCode }
+                availableForSale
+                selectedOptions { name value }
+              }
+            }
+          }
+          options { name values }
+        }
+      }
+    }
+  }
+`;
+
 // Cart mutations
 export const CART_QUERY = `query cart($id: ID!) { cart(id: $id) { id totalQuantity } }`;
 
