@@ -165,9 +165,14 @@ const ProductDetail = () => {
             </div>
 
             {/* CTA */}
-            <Button onClick={handleAddToCart} disabled={isLoading}>
-              {isLoading ? <Loader2 className="animate-spin" /> : "Add to Cart"}
-            </Button>
+            <div className="flex gap-3">
+              <Button onClick={handleAddToCart} disabled={isLoading} variant="outline" className="flex-1">
+                {isLoading ? <Loader2 className="animate-spin" /> : "Add to Cart"}
+              </Button>
+              <Button onClick={handleBuyNow} disabled={isLoading} className="flex-1">
+                {isLoading ? <Loader2 className="animate-spin" /> : "Buy Now"}
+              </Button>
+            </div>
 
             {/* Description */}
             <div className="mt-6 text-sm">
