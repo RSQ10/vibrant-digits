@@ -120,18 +120,39 @@ const ProductDetail = () => {
   const handleBuyNow = async () => {
     if (!variant) return;
     try {
+      console.log("Starting Buy Now checkout...");
+      console.log("Variant ID:", variant.id);
+      
+      // Ensure variant ID is in GID format
+      const merchandiseId = variant.id.includes("gid://")
+        ? variant.id
+        : `gid://shopify/ProductVariant/${variant.id}`;
+      
+      console.log("Merchandise ID:", merchandiseId);
+
       const data = await storefrontApiRequest(CART_CREATE_MUTATION, {
-        input: { lines: [{ quantity, merchandiseId: variant.id }] },
+        input: { lines: [{ quantity, merchandiseId }] },
       });
+
+      console.log("Full API response:", JSON.stringify(data));
+
       const checkoutUrl = data?.data?.cartCreate?.cart?.checkoutUrl;
+      const userErrors = data?.data?.cartCreate?.userErrors;
+
+      console.log("Checkout URL:", checkoutUrl);
+      console.log("User Errors:", userErrors);
+
       if (checkoutUrl) {
         const url = new URL(checkoutUrl);
         url.searchParams.set('channel', 'online_store');
+        console.log("Redirecting to:", url.toString());
         window.location.href = url.toString();
       } else {
+        console.error("No checkout URL returned", userErrors);
         toast.error('Could not create checkout. Please try again.');
       }
-    } catch {
+    } catch (err) {
+      console.error("Checkout error:", err);
       toast.error('Checkout failed. Please try again.');
     }
   };
