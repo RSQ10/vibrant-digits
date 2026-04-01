@@ -116,6 +116,25 @@ const ProductDetail = () => {
     toast.success(`${product.title} added to cart`);
   };
 
+  const handleBuyNow = async () => {
+    if (!variant) return;
+    try {
+      const data = await storefrontApiRequest(CART_CREATE_MUTATION, {
+        input: { lines: [{ quantity, merchandiseId: variant.id }] },
+      });
+      const checkoutUrl = data?.data?.cartCreate?.cart?.checkoutUrl;
+      if (checkoutUrl) {
+        const url = new URL(checkoutUrl);
+        url.searchParams.set('channel', 'online_store');
+        window.location.href = url.toString();
+      } else {
+        toast.error('Could not create checkout. Please try again.');
+      }
+    } catch {
+      toast.error('Checkout failed. Please try again.');
+    }
+  };
+
   return (
     <Layout>
       <motion.div
