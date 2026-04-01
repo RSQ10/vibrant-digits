@@ -3,9 +3,9 @@ import { useParams, Link } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import {
   storefrontApiRequest,
+  shopifyFetch,
   PRODUCT_BY_HANDLE_QUERY,
   PRODUCTS_QUERY,
-  CART_CREATE_MUTATION,
   type ShopifyProduct
 } from '@/lib/shopify';
 import { useCartStore } from '@/stores/cartStore';
