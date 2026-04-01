@@ -5,6 +5,7 @@ import {
   storefrontApiRequest,
   PRODUCT_BY_HANDLE_QUERY,
   PRODUCTS_QUERY,
+  CART_CREATE_MUTATION,
   type ShopifyProduct
 } from '@/lib/shopify';
 import { useCartStore } from '@/stores/cartStore';
@@ -116,6 +117,25 @@ const ProductDetail = () => {
     toast.success(`${product.title} added to cart`);
   };
 
+  const handleBuyNow = async () => {
+    if (!variant) return;
+    try {
+      const data = await storefrontApiRequest(CART_CREATE_MUTATION, {
+        input: { lines: [{ quantity, merchandiseId: variant.id }] },
+      });
+      const checkoutUrl = data?.data?.cartCreate?.cart?.checkoutUrl;
+      if (checkoutUrl) {
+        const url = new URL(checkoutUrl);
+        url.searchParams.set('channel', 'online_store');
+        window.location.href = url.toString();
+      } else {
+        toast.error('Could not create checkout. Please try again.');
+      }
+    } catch {
+      toast.error('Checkout failed. Please try again.');
+    }
+  };
+
   return (
     <Layout>
       <motion.div
@@ -165,9 +185,14 @@ const ProductDetail = () => {
             </div>
 
             {/* CTA */}
-            <Button onClick={handleAddToCart} disabled={isLoading}>
-              {isLoading ? <Loader2 className="animate-spin" /> : "Add to Cart"}
-            </Button>
+            <div className="flex gap-3">
+              <Button onClick={handleAddToCart} disabled={isLoading} variant="outline" className="flex-1">
+                {isLoading ? <Loader2 className="animate-spin" /> : "Add to Cart"}
+              </Button>
+              <Button onClick={handleBuyNow} disabled={isLoading} className="flex-1">
+                {isLoading ? <Loader2 className="animate-spin" /> : "Buy Now"}
+              </Button>
+            </div>
 
             {/* Description */}
             <div className="mt-6 text-sm">
