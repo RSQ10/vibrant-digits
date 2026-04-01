@@ -118,42 +118,59 @@ const ProductDetail = () => {
   };
 
   const handleBuyNow = async () => {
-    if (!variant) return;
+    const variantId = variant?.id
+      || product?.variants?.edges?.[0]?.node?.id;
+
+    if (!variantId) {
+      alert("Please select a variant");
+      return;
+    }
+
+    const merchandiseId = variantId.startsWith("gid://")
+      ? variantId
+      : `gid://shopify/ProductVariant/${variantId}`;
+
+    const domain = import.meta.env.VITE_SHOPIFY_STORE_DOMAIN;
+    const token = import.meta.env.VITE_SHOPIFY_STOREFRONT_TOKEN;
+
     try {
-      console.log("Starting Buy Now checkout...");
-      console.log("Variant ID:", variant.id);
-      
-      // Ensure variant ID is in GID format
-      const merchandiseId = variant.id.includes("gid://")
-        ? variant.id
-        : `gid://shopify/ProductVariant/${variant.id}`;
-      
-      console.log("Merchandise ID:", merchandiseId);
+      const res = await fetch(
+        `https://${domain}/api/2024-01/graphql.json`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Storefront-Access-Token": token,
+          },
+          body: JSON.stringify({
+            query: `mutation {
+              cartCreate(input: {
+                lines: [{
+                  quantity: ${quantity}
+                  merchandiseId: "${merchandiseId}"
+                }]
+              }) {
+                cart { checkoutUrl }
+                userErrors { message }
+              }
+            }`,
+          }),
+        }
+      );
 
-      const data = await storefrontApiRequest(CART_CREATE_MUTATION, {
-        input: { lines: [{ quantity, merchandiseId }] },
-      });
+      const json = await res.json();
+      console.log("Buy Now response:", JSON.stringify(json));
 
-      console.log("Full API response:", JSON.stringify(data));
-
-      const checkoutUrl = data?.data?.cartCreate?.cart?.checkoutUrl;
-      const userErrors = data?.data?.cartCreate?.userErrors;
-
-      console.log("Checkout URL:", checkoutUrl);
-      console.log("User Errors:", userErrors);
-
-      if (checkoutUrl) {
-        const url = new URL(checkoutUrl);
-        url.searchParams.set('channel', 'online_store');
-        console.log("Redirecting to:", url.toString());
-        window.location.href = url.toString();
+      const url = json?.data?.cartCreate?.cart?.checkoutUrl;
+      if (url) {
+        window.location.assign(url);
       } else {
-        console.error("No checkout URL returned", userErrors);
-        toast.error('Could not create checkout. Please try again.');
+        console.error("No checkout URL:", json?.data?.cartCreate?.userErrors);
+        toast.error("Could not create checkout. Please try again.");
       }
     } catch (err) {
       console.error("Checkout error:", err);
-      toast.error('Checkout failed. Please try again.');
+      toast.error("Checkout failed. Please try again.");
     }
   };
 
