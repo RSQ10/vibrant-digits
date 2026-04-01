@@ -130,12 +130,12 @@ const ProductDetail = () => {
       ? variantId
       : `gid://shopify/ProductVariant/${variantId}`;
 
-    const domain = import.meta.env.VITE_SHOPIFY_STORE_DOMAIN;
-    const token = import.meta.env.VITE_SHOPIFY_STOREFRONT_TOKEN;
+    const domain = 'jk0yez-6r.myshopify.com';
+    const token = '81830adb417bc04da31917ca40a1b6ba';
 
     try {
       const res = await fetch(
-        `https://${domain}/api/2024-01/graphql.json`,
+        `https://${domain}/api/2025-07/graphql.json`,
         {
           method: "POST",
           headers: {
