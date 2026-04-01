@@ -1,9 +1,9 @@
 import { toast } from "sonner";
 
-const SHOPIFY_API_VERSION = '2025-07';
-const SHOPIFY_STORE_PERMANENT_DOMAIN = 'jk0yez-6r.myshopify.com';
+const SHOPIFY_API_VERSION = '2024-01';
+const SHOPIFY_STORE_PERMANENT_DOMAIN = import.meta.env.VITE_SHOPIFY_STORE_DOMAIN || 'jk0yez-6r.myshopify.com';
 const SHOPIFY_STOREFRONT_URL = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}/api/${SHOPIFY_API_VERSION}/graphql.json`;
-const SHOPIFY_STOREFRONT_TOKEN = '81830adb417bc04da31917ca40a1b6ba';
+const SHOPIFY_STOREFRONT_TOKEN = import.meta.env.VITE_SHOPIFY_STOREFRONT_TOKEN || '81830adb417bc04da31917ca40a1b6ba';
 
 export interface ShopifyProduct {
   node: {
@@ -61,14 +61,23 @@ export async function storefrontApiRequest(query: string, variables: Record<stri
     toast.error("Shopify: Payment required", {
       description: "Your store needs an active billing plan. Visit admin.shopify.com to upgrade.",
     });
-    return;
+    return null;
   }
 
   if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
   const data = await response.json();
-  if (data.errors) throw new Error(`Shopify error: ${data.errors.map((e: { message: string }) => e.message).join(', ')}`);
+  if (data.errors) {
+    console.error("Shopify API errors:", data.errors);
+    throw new Error(`Shopify error: ${data.errors.map((e: { message: string }) => e.message).join(', ')}`);
+  }
   return data;
+}
+
+// Convenience wrapper that returns just the data portion
+export async function shopifyFetch(query: string, variables: Record<string, unknown> = {}) {
+  const json = await storefrontApiRequest(query, variables);
+  return json?.data;
 }
 
 // Queries
@@ -77,11 +86,7 @@ export const PRODUCTS_QUERY = `
     products(first: $first, query: $query) {
       edges {
         node {
-          id
-          title
-          description
-          handle
-          tags
+          id title description handle tags
           priceRange { minVariantPrice { amount currencyCode } }
           compareAtPriceRange { minVariantPrice { amount currencyCode } }
           images(first: 5) { edges { node { url altText } } }
@@ -256,7 +261,10 @@ export async function createShopifyCart(item: { variantId: string; quantity: num
   const data = await storefrontApiRequest(CART_CREATE_MUTATION, {
     input: { lines: [{ quantity: item.quantity, merchandiseId: item.variantId }] },
   });
-  if (data?.data?.cartCreate?.userErrors?.length > 0) return null;
+  if (data?.data?.cartCreate?.userErrors?.length > 0) {
+    console.error('Cart creation errors:', data.data.cartCreate.userErrors);
+    return null;
+  }
   const cart = data?.data?.cartCreate?.cart;
   if (!cart?.checkoutUrl) return null;
   const lineId = cart.lines.edges[0]?.node?.id;
