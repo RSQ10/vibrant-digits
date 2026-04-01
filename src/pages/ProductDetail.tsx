@@ -5,6 +5,7 @@ import {
   storefrontApiRequest,
   PRODUCT_BY_HANDLE_QUERY,
   PRODUCTS_QUERY,
+  CART_CREATE_MUTATION,
   type ShopifyProduct
 } from '@/lib/shopify';
 import { useCartStore } from '@/stores/cartStore';

@@ -145,9 +145,9 @@ export const CartDrawer = () => {
   const proceedToCheckout = () => {
     const checkoutUrl = getCheckoutUrl();
     if (checkoutUrl) {
-      window.open(checkoutUrl, '_blank');
       setIsOpen(false);
       setShowPrepaidPopup(false);
+      window.location.href = checkoutUrl;
     }
   };
 
