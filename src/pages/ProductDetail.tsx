@@ -120,10 +120,7 @@ const ProductDetail = () => {
   const handleBuyNow = async () => {
     const variantNode = product?.variants?.edges?.[selectedVariantIdx]?.node || product?.variants?.edges?.[0]?.node;
     const variantId = variantNode?.id;
-    if (!variantId) {
-      alert("No variant found: " + JSON.stringify(product?.variants));
-      return;
-    }
+    if (!variantId) return;
 
     const merchandiseId = variantId.includes("gid://")
       ? variantId
@@ -153,14 +150,16 @@ const ProductDetail = () => {
       }
     );
 
-    const text = await response.text();
-    alert("API Response: " + text);
-    const json = JSON.parse(text);
+    const json = await response.json();
     const url = json?.data?.cartCreate?.cart?.checkoutUrl;
-    alert("Checkout URL: " + url);
 
     if (url) {
-      window.location.assign(url);
+      const link = document.createElement("a");
+      link.href = url;
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
