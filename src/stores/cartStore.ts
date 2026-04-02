@@ -17,8 +17,7 @@ interface CartStore {
   checkoutId: string | null;
   checkoutUrl: string | null;
 
-  addItem: (item: CartItem) => Promise<void>;
-  getCheckoutUrl: () => string | null;
+  addItem: (item: CartItem) => Promise<string | null>;
 }
 
 const SHOPIFY_URL = `https://${import.meta.env.VITE_SHOPIFY_STORE_DOMAIN}/api/2023-10/graphql.json`;
@@ -35,8 +34,8 @@ export const useCartStore = create<CartStore>()(
       addItem: async (item) => {
         set({ isLoading: true });
 
-        // ✅ keep existing cart logic
-        const { items } = get();
+        // ✅ Local cart (safe)
+        const items = get().items || [];
         const existing = items.find(i => i.variantId === item.variantId);
 
         if (existing) {
@@ -51,10 +50,9 @@ export const useCartStore = create<CartStore>()(
           set({ items: [...items, item] });
         }
 
-        // ✅ Shopify checkout logic starts
         let { checkoutId } = get();
 
-        // create checkout if not exists
+        // ✅ Create checkout if not exists
         if (!checkoutId) {
           const res = await fetch(SHOPIFY_URL, {
             method: "POST",
@@ -82,7 +80,7 @@ export const useCartStore = create<CartStore>()(
           if (!checkout) {
             console.error("Checkout create failed", data);
             set({ isLoading: false });
-            return;
+            return null;
           }
 
           checkoutId = checkout.id;
@@ -93,7 +91,7 @@ export const useCartStore = create<CartStore>()(
           });
         }
 
-        // add item to checkout
+        // ✅ Add item to checkout
         const res = await fetch(SHOPIFY_URL, {
           method: "POST",
           headers: {
@@ -123,9 +121,10 @@ export const useCartStore = create<CartStore>()(
         });
 
         const data = await res.json();
-        const url = data?.data?.checkoutLineItemsAdd?.checkout?.webUrl;
+        const url =
+          data?.data?.checkoutLineItemsAdd?.checkout?.webUrl;
 
-        console.log("Checkout URL:", url);
+        console.log("Checkout URL (fresh):", url);
 
         if (url) {
           set({ checkoutUrl: url });
@@ -134,9 +133,9 @@ export const useCartStore = create<CartStore>()(
         }
 
         set({ isLoading: false });
-      },
 
-      getCheckoutUrl: () => get().checkoutUrl,
+        return url || null; // ✅ CRITICAL FIX
+      },
     }),
     {
       name: "shopify-cart",
