@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-// ─── Config ───────────────────────────────────────────────────────────────────
 const SHOPIFY_DOMAIN = import.meta.env.VITE_SHOPIFY_STORE_DOMAIN || "jk0yez-6r.myshopify.com";
 const SHOPIFY_TOKEN = import.meta.env.VITE_SHOPIFY_STOREFRONT_TOKEN || "c12677814d108cc0d536f2b653ce71b0";
 const SHOPIFY_URL = `https://${SHOPIFY_DOMAIN}/api/2024-01/graphql.json`;
@@ -13,7 +12,6 @@ const HEADERS = {
 
 export const OUT_OF_STOCK = "OUT_OF_STOCK" as const;
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 export interface CartItem {
   product: any;
   variantId: string;
@@ -28,7 +26,6 @@ interface CartStore {
   isLoading: boolean;
   cartId: string | null;
   checkoutUrl: string | null;
-
   addItem: (item: CartItem) => Promise<string | null>;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
@@ -37,23 +34,25 @@ interface CartStore {
   getItemCount: () => number;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 function toGid(variantId: string): string {
   return variantId.startsWith("gid://")
     ? variantId
     : `gid://shopify/ProductVariant/${variantId}`;
 }
 
-// THE FIX: replaces ANY domain in checkoutUrl with raw myshopify.com
-// Old code did: url.replace("glow-gadget.shop", SHOPIFY_DOMAIN) — broke if Shopify returned anything else
 function fixCheckoutUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   try {
     const parsed = new URL(url);
+    // Force domain to raw myshopify.com
     parsed.hostname = SHOPIFY_DOMAIN;
+    // Convert /cart/c/ permalink to /checkouts/ which works on myshopify.com
+    parsed.pathname = parsed.pathname.replace("/cart/c/", "/checkouts/");
     return parsed.toString();
   } catch {
-    return url.replace(/^https?:\/\/[^/]+/, `https://${SHOPIFY_DOMAIN}`);
+    return url
+      .replace(/^https?:\/\/[^/]+/, `https://${SHOPIFY_DOMAIN}`)
+      .replace("/cart/c/", "/checkouts/");
   }
 }
 
@@ -76,7 +75,6 @@ async function shopifyMutation(query: string, variables: Record<string, unknown>
   return res.json();
 }
 
-// ─── Store ────────────────────────────────────────────────────────────────────
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
@@ -87,7 +85,6 @@ export const useCartStore = create<CartStore>()(
 
       addItem: async (item: CartItem): Promise<string | null> => {
         set({ isLoading: true });
-
         try {
           const items = get().items || [];
           const existing = items.find((i) => i.variantId === item.variantId);
@@ -119,9 +116,8 @@ export const useCartStore = create<CartStore>()(
             );
 
             const errors = data?.data?.cartCreate?.userErrors ?? [];
-
             if (errors.length > 0) {
-              console.error("Shopify cartCreate errors:", errors);
+              console.error("cartCreate errors:", errors);
               set({
                 items: (get().items || []).filter((i) => i.variantId !== item.variantId),
                 isLoading: false,
@@ -131,10 +127,7 @@ export const useCartStore = create<CartStore>()(
 
             const cart = data?.data?.cartCreate?.cart;
             if (!cart) {
-              console.error(
-                "cartCreate returned no cart — verify Storefront API token has " +
-                "unauthenticated_write_checkouts permission in Shopify > Settings > Apps > Develop Apps"
-              );
+              console.error("cartCreate returned no cart — check Storefront API token permissions");
               set({ isLoading: false });
               return null;
             }
@@ -156,7 +149,7 @@ export const useCartStore = create<CartStore>()(
 
             const errors = data?.data?.cartLinesAdd?.userErrors ?? [];
             if (errors.length > 0) {
-              console.error("Shopify cartLinesAdd errors:", errors);
+              console.error("cartLinesAdd errors:", errors);
               if (isOutOfStockError(errors)) {
                 set({ isLoading: false });
                 return OUT_OF_STOCK;
