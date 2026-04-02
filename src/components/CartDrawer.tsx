@@ -153,7 +153,7 @@ const totalPrice = safeItems.reduce((sum, item) => {
 
   const handlePrepareAndRedirect = async () => {
     setPreparing(true);
-    const lines = items.map(item => ({
+    const lines = safeItems.map(item => ({
       variantId: item.variantId,
       quantity: item.quantity,
     }));
