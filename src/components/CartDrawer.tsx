@@ -139,9 +139,17 @@ export const CartDrawer = () => {
   const [showPrepaidPopup, setShowPrepaidPopup] = useState(false);
   const [cartCheckoutUrl, setCartCheckoutUrl] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
-  const { items, isLoading, updateQuantity, removeItem } = useCartStore();
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = items.reduce((sum, item) => sum + (parseFloat(item.price.amount) * item.quantity), 0);
+  const { items = [], isLoading, updateQuantity, removeItem } = useCartStore();
+
+const safeItems = Array.isArray(items) ? items : [];
+
+const totalItems = safeItems.reduce((sum, item) => {
+  return sum + (item?.quantity || 0);
+}, 0);
+
+const totalPrice = safeItems.reduce((sum, item) => {
+  return sum + ((parseFloat(item?.price?.amount || "0")) * (item?.quantity || 0));
+}, 0);
 
   const handlePrepareAndRedirect = async () => {
     setPreparing(true);
