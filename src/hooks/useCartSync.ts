@@ -1,14 +1,5 @@
-import { useEffect } from 'react';
-import { useCartStore } from '@/stores/cartStore';
-
+// Cart sync is no longer needed with simplified cart store
+// This hook is kept as a no-op to avoid breaking imports
 export function useCartSync() {
-  const syncCart = useCartStore(state => state.syncCart);
-  useEffect(() => {
-    syncCart();
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') syncCart();
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [syncCart]);
+  // no-op
 }

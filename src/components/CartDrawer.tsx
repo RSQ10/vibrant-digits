@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ShoppingCart, Minus, Plus, Trash2, ExternalLink, Loader2, CreditCard, Banknote, Gift, X, ShieldCheck, Sparkles } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
+import { createCartWithItems } from "@/lib/shopify";
 import { motion, AnimatePresence } from "framer-motion";
 
 const PrepaidPopup = ({
@@ -136,24 +137,34 @@ const PrepaidPopup = ({
 export const CartDrawer = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showPrepaidPopup, setShowPrepaidPopup] = useState(false);
-  const { items, isLoading, isSyncing, updateQuantity, removeItem, getCheckoutUrl, syncCart } = useCartStore();
+  const [cartCheckoutUrl, setCartCheckoutUrl] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const { items, isLoading, updateQuantity, removeItem } = useCartStore();
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + (parseFloat(item.price.amount) * item.quantity), 0);
 
-  useEffect(() => { if (isOpen) syncCart(); }, [isOpen, syncCart]);
-
-  const proceedToCheckout = () => {
-    const checkoutUrl = getCheckoutUrl();
-    if (checkoutUrl) {
-      setIsOpen(false);
+  const handlePrepareAndRedirect = async () => {
+    setPreparing(true);
+    const lines = items.map(item => ({
+      variantId: item.variantId,
+      quantity: item.quantity,
+    }));
+    const url = await createCartWithItems(lines);
+    setPreparing(false);
+    if (url) {
       setShowPrepaidPopup(false);
-      window.location.href = checkoutUrl;
+      const link = document.createElement("a");
+      link.href = url;
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   };
 
   const handleCheckout = () => {
-    setIsOpen(false); // Close sheet first
-    setTimeout(() => setShowPrepaidPopup(true), 300); // Then show popup after sheet animation
+    setIsOpen(false);
+    setTimeout(() => setShowPrepaidPopup(true), 300);
   };
 
   return (
@@ -221,8 +232,8 @@ export const CartDrawer = () => {
                     <span className="text-lg font-semibold text-heading">Total</span>
                     <span className="text-xl font-bold text-primary">₹{totalPrice.toFixed(0)}</span>
                   </div>
-                  <Button onClick={handleCheckout} className="w-full rounded-pill" size="lg" disabled={items.length === 0 || isLoading || isSyncing}>
-                    {isLoading || isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <><ExternalLink className="w-4 h-4 mr-2" />Proceed to Checkout</>}
+                  <Button onClick={handleCheckout} className="w-full rounded-pill" size="lg" disabled={items.length === 0 || isLoading || preparing}>
+                    {isLoading || preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <><ExternalLink className="w-4 h-4 mr-2" />Proceed to Checkout</>}
                   </Button>
                   <p className="text-xs text-center text-muted-foreground">🔒 Secure checkout via Shopify</p>
                 </div>
@@ -236,8 +247,8 @@ export const CartDrawer = () => {
         open={showPrepaidPopup}
         onClose={() => setShowPrepaidPopup(false)}
         totalPrice={totalPrice}
-        onPayPrepaid={proceedToCheckout}
-        onPayCOD={proceedToCheckout}
+        onPayPrepaid={handlePrepareAndRedirect}
+        onPayCOD={handlePrepareAndRedirect}
       />
     </>
   );
