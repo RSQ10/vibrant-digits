@@ -26,6 +26,9 @@ const ProductDetail = () => {
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [loadingCheckout, setLoadingCheckout] = useState(false);
+
   const addItem = useCartStore(s => s.addItem);
   const isLoading = useCartStore(s => s.isLoading);
 
