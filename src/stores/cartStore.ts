@@ -11,7 +11,6 @@ const HEADERS = {
   "X-Shopify-Storefront-Access-Token": SHOPIFY_TOKEN,
 };
 
-// Special return value so UI can show "Out of Stock" instead of silent fail
 export const OUT_OF_STOCK = "OUT_OF_STOCK" as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -45,16 +44,8 @@ function toGid(variantId: string): string {
     : `gid://shopify/ProductVariant/${variantId}`;
 }
 
-/**
- * FIX: Rewrites ANY checkout URL domain to the raw myshopify.com domain.
- *
- * Root cause of the bug: Shopify returns checkoutUrl pointing to your
- * custom domain (glow-gadget.shop) which resolves to Vercel -> homepage.
- *
- * Fix: Parse the URL and replace the hostname with myshopify.com so it
- * always hits Shopify's real checkout — regardless of what domain Shopify
- * puts in the URL.
- */
+// THE FIX: replaces ANY domain in checkoutUrl with raw myshopify.com
+// Old code did: url.replace("glow-gadget.shop", SHOPIFY_DOMAIN) — broke if Shopify returned anything else
 function fixCheckoutUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   try {
@@ -149,7 +140,7 @@ export const useCartStore = create<CartStore>()(
             }
 
             cartId = cart.id;
-            checkoutUrl = fixCheckoutUrl(cart.checkoutUrl); // ← THE FIX
+            checkoutUrl = fixCheckoutUrl(cart.checkoutUrl);
             set({ cartId, checkoutUrl });
 
           } else {
@@ -174,7 +165,7 @@ export const useCartStore = create<CartStore>()(
 
             checkoutUrl = fixCheckoutUrl(
               data?.data?.cartLinesAdd?.cart?.checkoutUrl ?? get().checkoutUrl
-            ); // ← THE FIX
+            );
             set({ checkoutUrl });
           }
 
