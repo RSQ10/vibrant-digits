@@ -247,22 +247,8 @@ export const CartDrawer = () => {
         open={showPrepaidPopup}
         onClose={() => setShowPrepaidPopup(false)}
         totalPrice={totalPrice}
-        onPayPrepaid={async () => {
-          await handlePrepareCheckout();
-          const url = cartCheckoutUrl;
-          if (url) {
-            setShowPrepaidPopup(false);
-            window.open(url, '_self');
-          }
-        }}
-        onPayCOD={async () => {
-          await handlePrepareCheckout();
-          const url = cartCheckoutUrl;
-          if (url) {
-            setShowPrepaidPopup(false);
-            window.open(url, '_self');
-          }
-        }}
+        onPayPrepaid={handlePrepareAndRedirect}
+        onPayCOD={handlePrepareAndRedirect}
       />
     </>
   );
