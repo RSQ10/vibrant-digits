@@ -43,7 +43,7 @@ const ProductDetail = () => {
             .slice(0, 4)
         );
       } catch (err) {
-        console.error(err);
+        console.error("Fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -88,16 +88,30 @@ const ProductDetail = () => {
   const handleAddToCart = async () => {
     if (!variant) return;
 
-    await addItem(variant.id, quantity);
+    await useCartStore.getState().addItem({
+      product: { node: product },
+      variantId: variant.id,
+      variantTitle: variant.title,
+      price: variant.price,
+      quantity,
+      selectedOptions: variant.selectedOptions || [],
+    });
 
     toast.success(`${product.title} added to cart`);
   };
 
-  // ✅ BUY NOW (FINAL FIX)
+  // ✅ BUY NOW (FINAL)
   const handleBuyNow = async () => {
     if (!variant) return;
 
-    await useCartStore.getState().addItem(variant.id, quantity);
+    await useCartStore.getState().addItem({
+      product: { node: product },
+      variantId: variant.id,
+      variantTitle: variant.title,
+      price: variant.price,
+      quantity,
+      selectedOptions: variant.selectedOptions || [],
+    });
 
     const checkoutUrl = useCartStore.getState().getCheckoutUrl();
 
@@ -156,17 +170,17 @@ const ProductDetail = () => {
             <div className="flex gap-3">
               <Button
                 onClick={handleAddToCart}
-                disabled={isLoading}
                 variant="outline"
                 className="flex-1"
+                disabled={isLoading}
               >
                 {isLoading ? <Loader2 className="animate-spin" /> : "Add to Cart"}
               </Button>
 
               <Button
                 onClick={handleBuyNow}
-                disabled={isLoading}
                 className="flex-1"
+                disabled={isLoading}
               >
                 {isLoading ? <Loader2 className="animate-spin" /> : "Buy Now"}
               </Button>
