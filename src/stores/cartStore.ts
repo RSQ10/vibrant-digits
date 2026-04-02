@@ -45,6 +45,14 @@ function toGid(variantId: string): string {
     : `gid://shopify/ProductVariant/${variantId}`;
 }
 
+// Shopify returns checkoutUrl using the custom domain (glow-gadget.shop)
+// but that domain points to Vercel (our frontend), not Shopify checkout.
+// We rewrite it to the myshopify.com domain so checkout always works.
+function fixCheckoutUrl(url: string | null): string | null {
+  if (!url) return null;
+  return url.replace("glow-gadget.shop", SHOPIFY_DOMAIN);
+}
+
 async function shopifyMutation(query: string, variables: Record<string, unknown>) {
   const res = await fetch(SHOPIFY_URL, {
     method: "POST",
@@ -125,7 +133,7 @@ export const useCartStore = create<CartStore>()(
             }
 
             cartId = cart.id;
-            checkoutUrl = cart.checkoutUrl;
+            checkoutUrl = fixCheckoutUrl(cart.checkoutUrl);
             set({ cartId, checkoutUrl });
           } else {
             // 2b. Add line to existing cart
@@ -153,8 +161,9 @@ export const useCartStore = create<CartStore>()(
               console.error("Shopify cartLinesAdd errors:", errors);
             }
 
-            checkoutUrl =
-              data?.data?.cartLinesAdd?.cart?.checkoutUrl || get().checkoutUrl;
+            checkoutUrl = fixCheckoutUrl(
+              data?.data?.cartLinesAdd?.cart?.checkoutUrl || get().checkoutUrl
+            );
             set({ checkoutUrl });
           }
 
