@@ -25,7 +25,6 @@ const ProductDetail = () => {
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  const addItem = useCartStore(s => s.addItem);
   const isLoading = useCartStore(s => s.isLoading);
 
   useEffect(() => {
