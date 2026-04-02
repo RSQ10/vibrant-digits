@@ -43,7 +43,7 @@ const ProductDetail = () => {
             .slice(0, 4)
         );
       } catch (err) {
-        console.error("Fetch error:", err);
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -84,7 +84,6 @@ const ProductDetail = () => {
   const price = parseFloat(variant?.price.amount || '0');
   const images = product.images.edges;
 
-  // ✅ ADD TO CART
   const handleAddToCart = async () => {
     if (!variant) return;
 
@@ -100,11 +99,10 @@ const ProductDetail = () => {
     toast.success(`${product.title} added to cart`);
   };
 
-  // ✅ BUY NOW (FINAL)
   const handleBuyNow = async () => {
     if (!variant) return;
 
-    await useCartStore.getState().addItem({
+    const url = await useCartStore.getState().addItem({
       product: { node: product },
       variantId: variant.id,
       variantTitle: variant.title,
@@ -113,12 +111,10 @@ const ProductDetail = () => {
       selectedOptions: variant.selectedOptions || [],
     });
 
-    const checkoutUrl = useCartStore.getState().getCheckoutUrl();
+    console.log("Final checkout URL:", url);
 
-    console.log("Checkout URL:", checkoutUrl);
-
-    if (checkoutUrl) {
-      window.location.href = checkoutUrl;
+    if (url) {
+      window.location.href = url;
     } else {
       console.error("Checkout failed");
     }
@@ -128,7 +124,6 @@ const ProductDetail = () => {
     <Layout>
       <motion.div className="container mx-auto px-4 py-10">
 
-        {/* Breadcrumb */}
         <div className="flex items-center gap-1 text-sm mb-6">
           <Link to="/">Home</Link>
           <ChevronRight className="w-3 h-3" />
@@ -139,7 +134,6 @@ const ProductDetail = () => {
 
         <div className="grid lg:grid-cols-2 gap-10">
 
-          {/* Image */}
           <div>
             {images[0] && (
               <img
@@ -150,12 +144,10 @@ const ProductDetail = () => {
             )}
           </div>
 
-          {/* Info */}
           <div>
             <h1 className="text-2xl font-bold mb-3">{product.title}</h1>
             <p className="text-lg font-semibold mb-4">₹{price}</p>
 
-            {/* Quantity */}
             <div className="flex items-center gap-3 mb-6">
               <Button onClick={() => setQuantity(q => Math.max(1, q - 1))}>
                 <Minus />
@@ -166,27 +158,16 @@ const ProductDetail = () => {
               </Button>
             </div>
 
-            {/* CTA */}
             <div className="flex gap-3">
-              <Button
-                onClick={handleAddToCart}
-                variant="outline"
-                className="flex-1"
-                disabled={isLoading}
-              >
-                {isLoading ? <Loader2 className="animate-spin" /> : "Add to Cart"}
+              <Button onClick={handleAddToCart} variant="outline" className="flex-1">
+                Add to Cart
               </Button>
 
-              <Button
-                onClick={handleBuyNow}
-                className="flex-1"
-                disabled={isLoading}
-              >
-                {isLoading ? <Loader2 className="animate-spin" /> : "Buy Now"}
+              <Button onClick={handleBuyNow} className="flex-1">
+                Buy Now
               </Button>
             </div>
 
-            {/* Description */}
             <div className="mt-6 text-sm">
               {product.description}
             </div>
@@ -194,7 +175,6 @@ const ProductDetail = () => {
 
         </div>
 
-        {/* Related */}
         {related.length > 0 && (
           <div className="mt-16">
             <h2 className="text-xl font-bold mb-6">Related Products</h2>
