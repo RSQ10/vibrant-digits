@@ -5,7 +5,7 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, type ShopifyProduct } from '@/lib/shopify';
-import { useCartStore } from '@/stores/cartStore';
+import { useCartStore, OUT_OF_STOCK } from '@/stores/cartStore';
 import { toast } from 'sonner';
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
@@ -89,9 +89,7 @@ const ProductDetail = () => {
 
   // Find matching variant based on selected options
   const selectedVariant = variants.find((v) =>
-    v.selectedOptions.every(
-      (opt) => selectedOptions[opt.name] === opt.value
-    )
+    v.selectedOptions.every((opt) => selectedOptions[opt.name] === opt.value)
   ) || variants[0];
 
   const price = parseFloat(selectedVariant?.price.amount || '0');
@@ -100,7 +98,9 @@ const ProductDetail = () => {
     : null;
   const isOnSale = compareAt && compareAt > price;
   const discount = isOnSale ? Math.round(((compareAt - price) / compareAt) * 100) : 0;
-  const available = selectedVariant?.availableForSale ?? true;
+
+  // Use Shopify's availableForSale directly — this is the source of truth
+  const available = selectedVariant?.availableForSale === true;
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleOptionSelect = (optionName: string, value: string) => {
@@ -128,8 +128,14 @@ const ProductDetail = () => {
     if (!selectedVariant || !available) return;
     setAddToCartLoading(true);
     try {
-      await addItem(buildCartItem());
-      toast.success(`${product.title} added to cart!`);
+      const result = await addItem(buildCartItem());
+      if (result === OUT_OF_STOCK) {
+        toast.error('This product is out of stock.');
+      } else if (result) {
+        toast.success(`${product.title} added to cart!`);
+      } else {
+        toast.error('Failed to add to cart. Please try again.');
+      }
     } catch {
       toast.error('Failed to add to cart. Please try again.');
     } finally {
@@ -141,11 +147,13 @@ const ProductDetail = () => {
     if (!selectedVariant || !available) return;
     setBuyNowLoading(true);
     try {
-      const url = await addItem(buildCartItem());
-      if (url) {
-        window.location.href = url;
+      const result = await addItem(buildCartItem());
+      if (result === OUT_OF_STOCK) {
+        toast.error('This product is out of stock.');
+      } else if (result && result !== OUT_OF_STOCK) {
+        window.location.href = result;
       } else {
-        toast.error('Could not start checkout. Please check your Shopify API permissions.');
+        toast.error('Could not start checkout. Please try again.');
       }
     } catch {
       toast.error('Checkout failed. Please try again.');
@@ -172,7 +180,6 @@ const ProductDetail = () => {
 
           {/* ── Left: Image Gallery ────────────────────────────────────────── */}
           <div className="space-y-4">
-            {/* Main image */}
             <div className="relative aspect-square rounded-card overflow-hidden bg-surface shadow-default group">
               {images.length > 0 ? (
                 <img
@@ -186,14 +193,20 @@ const ProductDetail = () => {
                 </div>
               )}
 
-              {/* Sale badge */}
               {isOnSale && (
                 <span className="absolute top-4 left-4 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-pill">
                   {discount}% OFF
                 </span>
               )}
 
-              {/* Nav arrows — only show if multiple images */}
+              {!available && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <span className="bg-white text-heading font-bold px-6 py-2 rounded-pill text-sm">
+                    Out of Stock
+                  </span>
+                </div>
+              )}
+
               {images.length > 1 && (
                 <>
                   <button
@@ -212,7 +225,6 @@ const ProductDetail = () => {
               )}
             </div>
 
-            {/* Thumbnails */}
             {images.length > 1 && (
               <div className="flex gap-2 flex-wrap">
                 {images.map((img, i) => (
@@ -255,7 +267,7 @@ const ProductDetail = () => {
               </h1>
             </div>
 
-            {/* Rating placeholder */}
+            {/* Rating */}
             <div className="flex items-center gap-1.5">
               {[...Array(5)].map((_, i) => (
                 <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
@@ -280,7 +292,7 @@ const ProductDetail = () => {
               )}
             </div>
 
-            {/* Stock status */}
+            {/* Stock status — driven by Shopify availableForSale */}
             <div>
               {available ? (
                 <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600">
@@ -325,67 +337,80 @@ const ProductDetail = () => {
                 </div>
               ))}
 
-            {/* Quantity Selector */}
-            <div>
-              <p className="text-sm font-semibold text-heading mb-2">Quantity</p>
-              <div className="inline-flex items-center border border-border rounded-pill overflow-hidden">
-                <button
-                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="px-4 py-2.5 hover:bg-blue-soft transition-colors text-heading"
-                  disabled={quantity <= 1}
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-                <span className="px-5 py-2.5 text-sm font-semibold text-heading min-w-[3rem] text-center border-x border-border">
-                  {quantity}
-                </span>
-                <button
-                  onClick={() => setQuantity((q) => q + 1)}
-                  className="px-4 py-2.5 hover:bg-blue-soft transition-colors text-heading"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
+            {/* Quantity Selector — hidden when out of stock */}
+            {available && (
+              <div>
+                <p className="text-sm font-semibold text-heading mb-2">Quantity</p>
+                <div className="inline-flex items-center border border-border rounded-pill overflow-hidden">
+                  <button
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="px-4 py-2.5 hover:bg-blue-soft transition-colors text-heading"
+                    disabled={quantity <= 1}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="px-5 py-2.5 text-sm font-semibold text-heading min-w-[3rem] text-center border-x border-border">
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="px-4 py-2.5 hover:bg-blue-soft transition-colors text-heading"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <Button
-                onClick={handleBuyNow}
-                disabled={!available || buyNowLoading}
-                className="flex-1 rounded-pill bg-primary text-primary-foreground font-semibold py-3 h-auto hover:bg-primary/90 transition-all shadow-hover"
-              >
-                {buyNowLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    Processing...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <Zap className="w-4 h-4" />
-                    Buy Now
-                  </span>
-                )}
-              </Button>
+              {available ? (
+                <>
+                  <Button
+                    onClick={handleBuyNow}
+                    disabled={buyNowLoading}
+                    className="flex-1 rounded-pill bg-primary text-primary-foreground font-semibold py-3 h-auto hover:bg-primary/90 transition-all shadow-hover"
+                  >
+                    {buyNowLoading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        Processing...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Zap className="w-4 h-4" />
+                        Buy Now
+                      </span>
+                    )}
+                  </Button>
 
-              <Button
-                variant="outline"
-                onClick={handleAddToCart}
-                disabled={!available || addToCartLoading}
-                className="flex-1 rounded-pill border-primary text-primary font-semibold py-3 h-auto hover:bg-primary hover:text-primary-foreground transition-all"
-              >
-                {addToCartLoading ? (
-                  <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
-                    Adding...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4" />
-                    Add to Cart
-                  </span>
-                )}
-              </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleAddToCart}
+                    disabled={addToCartLoading}
+                    className="flex-1 rounded-pill border-primary text-primary font-semibold py-3 h-auto hover:bg-primary hover:text-primary-foreground transition-all"
+                  >
+                    {addToCartLoading ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
+                        Adding...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <ShoppingCart className="w-4 h-4" />
+                        Add to Cart
+                      </span>
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  disabled
+                  className="flex-1 rounded-pill bg-muted text-muted-foreground font-semibold py-3 h-auto cursor-not-allowed"
+                >
+                  Out of Stock
+                </Button>
+              )}
             </div>
 
             {/* Description */}
