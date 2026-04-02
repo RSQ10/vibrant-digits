@@ -224,8 +224,8 @@ export const CartDrawer = () => {
                     <span className="text-lg font-semibold text-heading">Total</span>
                     <span className="text-xl font-bold text-primary">₹{totalPrice.toFixed(0)}</span>
                   </div>
-                  <Button onClick={handleCheckout} className="w-full rounded-pill" size="lg" disabled={items.length === 0 || isLoading || isSyncing}>
-                    {isLoading || isSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <><ExternalLink className="w-4 h-4 mr-2" />Proceed to Checkout</>}
+                  <Button onClick={handleCheckout} className="w-full rounded-pill" size="lg" disabled={items.length === 0 || isLoading || preparing}>
+                    {isLoading || preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <><ExternalLink className="w-4 h-4 mr-2" />Proceed to Checkout</>}
                   </Button>
                   <p className="text-xs text-center text-muted-foreground">🔒 Secure checkout via Shopify</p>
                 </div>
