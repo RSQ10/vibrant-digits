@@ -98,7 +98,7 @@ const ProductDetail = () => {
   const handleBuyNow = async () => {
     if (!variant) return;
 
-    await addItem(variant.id, quantity);
+    await useCartStore.getState().addItem(variant.id, quantity);
 
     const checkoutUrl = useCartStore.getState().getCheckoutUrl();
 
