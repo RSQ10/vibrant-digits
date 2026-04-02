@@ -13,7 +13,6 @@ interface CartItem {
 interface CartStore {
   items: CartItem[];
   isLoading: boolean;
-
   checkoutId: string | null;
   checkoutUrl: string | null;
 
@@ -34,7 +33,6 @@ export const useCartStore = create<CartStore>()(
       addItem: async (item) => {
         set({ isLoading: true });
 
-        // ✅ Local cart (safe)
         const items = get().items || [];
         const existing = items.find(i => i.variantId === item.variantId);
 
@@ -52,7 +50,6 @@ export const useCartStore = create<CartStore>()(
 
         let { checkoutId } = get();
 
-        // ✅ Create checkout if not exists
         if (!checkoutId) {
           const res = await fetch(SHOPIFY_URL, {
             method: "POST",
@@ -78,7 +75,6 @@ export const useCartStore = create<CartStore>()(
           const checkout = data?.data?.checkoutCreate?.checkout;
 
           if (!checkout) {
-            console.error("Checkout create failed", data);
             set({ isLoading: false });
             return null;
           }
@@ -91,7 +87,6 @@ export const useCartStore = create<CartStore>()(
           });
         }
 
-        // ✅ Add item to checkout
         const res = await fetch(SHOPIFY_URL, {
           method: "POST",
           headers: {
@@ -121,20 +116,15 @@ export const useCartStore = create<CartStore>()(
         });
 
         const data = await res.json();
-        const url =
-          data?.data?.checkoutLineItemsAdd?.checkout?.webUrl;
-
-        console.log("Checkout URL (fresh):", url);
+        const url = data?.data?.checkoutLineItemsAdd?.checkout?.webUrl;
 
         if (url) {
           set({ checkoutUrl: url });
-        } else {
-          console.error("Add item failed", data);
         }
 
         set({ isLoading: false });
 
-        return url || null; // ✅ CRITICAL FIX
+        return url || null;
       },
     }),
     {
