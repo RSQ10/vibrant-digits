@@ -1,4 +1,16 @@
 {
+  "redirects": [
+    {
+      "source": "/cart/c/:path*",
+      "destination": "https://jk0yez-6r.myshopify.com/cart/c/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/checkouts/:path*",
+      "destination": "https://jk0yez-6r.myshopify.com/checkouts/:path*",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
