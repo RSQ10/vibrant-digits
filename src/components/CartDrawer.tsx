@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ShoppingCart, Minus, Plus, Trash2, ExternalLink, Loader2, CreditCard, Banknote, Gift, X, ShieldCheck, Sparkles } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
+import { createCartWithItems } from "@/lib/shopify";
 import { motion, AnimatePresence } from "framer-motion";
 
 const PrepaidPopup = ({
