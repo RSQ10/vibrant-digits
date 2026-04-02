@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/((?!checkouts|cart/c|payments|sessions|shop/pay).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
