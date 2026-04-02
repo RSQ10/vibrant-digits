@@ -104,8 +104,6 @@ const ProductDetail = () => {
 
   const images = product.images.edges;
 
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-  const [loadingCheckout, setLoadingCheckout] = useState(false);
 
   const handleAddToCart = () => {
     if (!variant) return;
