@@ -5,7 +5,6 @@ import {
   storefrontApiRequest,
   PRODUCT_BY_HANDLE_QUERY,
   PRODUCTS_QUERY,
-  createCheckout,
   type ShopifyProduct
 } from '@/lib/shopify';
 import { useCartStore } from '@/stores/cartStore';
@@ -26,40 +25,26 @@ const ProductDetail = () => {
   const [selectedVariantIdx, setSelectedVariantIdx] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-  const [loadingCheckout, setLoadingCheckout] = useState(false);
-
   const addItem = useCartStore(s => s.addItem);
   const isLoading = useCartStore(s => s.isLoading);
 
   useEffect(() => {
-    if (!handle) return; // ✅ IMPORTANT FIX
+    if (!handle) return;
 
     const fetchProduct = async () => {
       setLoading(true);
-
       try {
-        console.log("Fetching product with handle:", handle);
-
         const data = await storefrontApiRequest(PRODUCT_BY_HANDLE_QUERY, { handle });
+        setProduct(data?.data?.productByHandle || null);
 
-        const fetchedProduct = data?.data?.productByHandle || null;
-        console.log("Product response:", fetchedProduct);
-
-        setProduct(fetchedProduct);
-
-        // Related products
         const relData = await storefrontApiRequest(PRODUCTS_QUERY, { first: 4 });
-
-        const filtered =
+        setRelated(
           (relData?.data?.products?.edges || [])
             .filter((p: ShopifyProduct) => p.node.handle !== handle)
-            .slice(0, 4);
-
-        setRelated(filtered);
-
+            .slice(0, 4)
+        );
       } catch (err) {
-        console.error("Error fetching product:", err);
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -70,11 +55,9 @@ const ProductDetail = () => {
     setSelectedImage(0);
     setSelectedVariantIdx(0);
     setQuantity(1);
-
     window.scrollTo(0, 0);
   }, [handle]);
 
-  // ⛔ Loading state
   if (loading) {
     return (
       <Layout>
@@ -85,7 +68,6 @@ const ProductDetail = () => {
     );
   }
 
-  // ❌ Product not found
   if (!product) {
     return (
       <Layout>
@@ -101,39 +83,37 @@ const ProductDetail = () => {
 
   const variant = product.variants.edges[selectedVariantIdx]?.node;
   const price = parseFloat(variant?.price.amount || '0');
-
   const images = product.images.edges;
 
-
-  const handleAddToCart = () => {
+  // ✅ ADD TO CART
+  const handleAddToCart = async () => {
     if (!variant) return;
-    addItem({
-      product: { node: product },
-      variantId: variant.id,
-      variantTitle: variant.title,
-      price: variant.price,
-      quantity,
-      selectedOptions: variant.selectedOptions || [],
-    });
+
+    await addItem(variant.id, quantity);
+
     toast.success(`${product.title} added to cart`);
   };
 
-  const generateCheckoutUrl = async () => {
-    setLoadingCheckout(true);
-    const variantId = variant?.id || product?.variants?.edges?.[0]?.node?.id;
-    if (!variantId) { setLoadingCheckout(false); return; }
-    const url = await createCheckout(variantId, quantity);
-    if (url) setCheckoutUrl(url);
-    setLoadingCheckout(false);
+  // ✅ BUY NOW (FINAL FIX)
+  const handleBuyNow = async () => {
+    if (!variant) return;
+
+    await addItem(variant.id, quantity);
+
+    const checkoutUrl = useCartStore.getState().getCheckoutUrl();
+
+    console.log("Checkout URL:", checkoutUrl);
+
+    if (checkoutUrl) {
+      window.location.href = checkoutUrl;
+    } else {
+      console.error("Checkout failed");
+    }
   };
 
   return (
     <Layout>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="container mx-auto px-4 py-10"
-      >
+      <motion.div className="container mx-auto px-4 py-10">
 
         {/* Breadcrumb */}
         <div className="flex items-center gap-1 text-sm mb-6">
@@ -175,24 +155,22 @@ const ProductDetail = () => {
 
             {/* CTA */}
             <div className="flex gap-3">
-              <Button onClick={handleAddToCart} disabled={isLoading} variant="outline" className="flex-1">
+              <Button
+                onClick={handleAddToCart}
+                disabled={isLoading}
+                variant="outline"
+                className="flex-1"
+              >
                 {isLoading ? <Loader2 className="animate-spin" /> : "Add to Cart"}
               </Button>
 
-              {checkoutUrl ? (
-                <a
-                  href={checkoutUrl}
-                  target="_self"
-                  rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center py-2.5 px-6 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors"
-                >
-                  Proceed to Checkout →
-                </a>
-              ) : (
-                <Button onClick={generateCheckoutUrl} disabled={loadingCheckout} className="flex-1">
-                  {loadingCheckout ? <Loader2 className="animate-spin" /> : "Buy Now"}
-                </Button>
-              )}
+              <Button
+                onClick={handleBuyNow}
+                disabled={isLoading}
+                className="flex-1"
+              >
+                {isLoading ? <Loader2 className="animate-spin" /> : "Buy Now"}
+              </Button>
             </div>
 
             {/* Description */}
