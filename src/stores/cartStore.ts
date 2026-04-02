@@ -30,7 +30,6 @@ interface CartStore {
   cartId: string | null;
   checkoutUrl: string | null;
 
-  // Returns checkoutUrl string, "OUT_OF_STOCK", or null on error
   addItem: (item: CartItem) => Promise<string | null>;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
@@ -46,11 +45,25 @@ function toGid(variantId: string): string {
     : `gid://shopify/ProductVariant/${variantId}`;
 }
 
-// Shopify returns checkoutUrl on the custom domain (glow-gadget.shop)
-// which points to Vercel — not Shopify checkout. Rewrite to myshopify.com.
+/**
+ * FIX: Rewrites ANY checkout URL domain to the raw myshopify.com domain.
+ *
+ * Root cause of the bug: Shopify returns checkoutUrl pointing to your
+ * custom domain (glow-gadget.shop) which resolves to Vercel -> homepage.
+ *
+ * Fix: Parse the URL and replace the hostname with myshopify.com so it
+ * always hits Shopify's real checkout — regardless of what domain Shopify
+ * puts in the URL.
+ */
 function fixCheckoutUrl(url: string | null | undefined): string | null {
   if (!url) return null;
-  return url.replace("glow-gadget.shop", SHOPIFY_DOMAIN);
+  try {
+    const parsed = new URL(url);
+    parsed.hostname = SHOPIFY_DOMAIN;
+    return parsed.toString();
+  } catch {
+    return url.replace(/^https?:\/\/[^/]+/, `https://${SHOPIFY_DOMAIN}`);
+  }
 }
 
 function isOutOfStockError(errors: Array<{ message: string }>): boolean {
@@ -85,7 +98,6 @@ export const useCartStore = create<CartStore>()(
         set({ isLoading: true });
 
         try {
-          // 1. Update local state optimistically
           const items = get().items || [];
           const existing = items.find((i) => i.variantId === item.variantId);
           if (existing) {
@@ -105,7 +117,6 @@ export const useCartStore = create<CartStore>()(
           let checkoutUrl: string | null = null;
 
           if (!cartId) {
-            // 2a. Create new cart
             const data = await shopifyMutation(
               `mutation cartCreate($input: CartInput!) {
                 cartCreate(input: $input) {
@@ -120,7 +131,6 @@ export const useCartStore = create<CartStore>()(
 
             if (errors.length > 0) {
               console.error("Shopify cartCreate errors:", errors);
-              // Roll back optimistic update
               set({
                 items: (get().items || []).filter((i) => i.variantId !== item.variantId),
                 isLoading: false,
@@ -130,17 +140,19 @@ export const useCartStore = create<CartStore>()(
 
             const cart = data?.data?.cartCreate?.cart;
             if (!cart) {
-              console.error("cartCreate returned no cart and no errors");
+              console.error(
+                "cartCreate returned no cart — verify Storefront API token has " +
+                "unauthenticated_write_checkouts permission in Shopify > Settings > Apps > Develop Apps"
+              );
               set({ isLoading: false });
               return null;
             }
 
             cartId = cart.id;
-            checkoutUrl = fixCheckoutUrl(cart.checkoutUrl);
+            checkoutUrl = fixCheckoutUrl(cart.checkoutUrl); // ← THE FIX
             set({ cartId, checkoutUrl });
 
           } else {
-            // 2b. Add to existing cart
             const data = await shopifyMutation(
               `mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
                 cartLinesAdd(cartId: $cartId, lines: $lines) {
@@ -162,7 +174,7 @@ export const useCartStore = create<CartStore>()(
 
             checkoutUrl = fixCheckoutUrl(
               data?.data?.cartLinesAdd?.cart?.checkoutUrl ?? get().checkoutUrl
-            );
+            ); // ← THE FIX
             set({ checkoutUrl });
           }
 
