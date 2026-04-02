@@ -3,16 +3,15 @@ import { useParams, Link } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import {
   storefrontApiRequest,
-  shopifyFetch,
   PRODUCT_BY_HANDLE_QUERY,
   PRODUCTS_QUERY,
+  createCheckout,
   type ShopifyProduct
 } from '@/lib/shopify';
 import { useCartStore } from '@/stores/cartStore';
 import { Button } from '@/components/ui/button';
 import { ProductCard } from '@/components/ProductCard';
-import { Minus, Plus, Loader2, Lock, Truck, RotateCcw, ChevronRight } from 'lucide-react';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Minus, Plus, Loader2, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
