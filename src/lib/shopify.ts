@@ -1,9 +1,12 @@
 import { toast } from "sonner";
 
-const SHOPIFY_API_VERSION = '2024-01';
-const SHOPIFY_STORE_PERMANENT_DOMAIN = 'jk0yez-6r.myshopify.com';
-const SHOPIFY_STOREFRONT_URL = `https://${SHOPIFY_STORE_PERMANENT_DOMAIN}/api/${SHOPIFY_API_VERSION}/graphql.json`;
-const SHOPIFY_STOREFRONT_TOKEN = 'c12677814d108cc0d536f2b653ce71b0';
+const DOMAIN = "jk0yez-6r.myshopify.com"
+const TOKEN = "c12677814d108cc0d536f2b653ce71b0"
+const ENDPOINT = `https://${DOMAIN}/api/2024-01/graphql.json`
+const HEADERS = {
+  "Content-Type": "application/json",
+  "X-Shopify-Storefront-Access-Token": TOKEN,
+}
 
 export interface ShopifyProduct {
   node: {
@@ -48,18 +51,15 @@ export interface ShopifyCollection {
 }
 
 export async function storefrontApiRequest(query: string, variables: Record<string, unknown> = {}) {
-  const response = await fetch(SHOPIFY_STOREFRONT_URL, {
+  const response = await fetch(ENDPOINT, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Storefront-Access-Token': SHOPIFY_STOREFRONT_TOKEN,
-    },
+    headers: HEADERS,
     body: JSON.stringify({ query, variables }),
   });
 
   if (response.status === 402) {
     toast.error("Shopify: Payment required", {
-      description: "Your store needs an active billing plan. Visit admin.shopify.com to upgrade.",
+      description: "Your store needs an active billing plan.",
     });
     return null;
   }
@@ -69,18 +69,90 @@ export async function storefrontApiRequest(query: string, variables: Record<stri
   const data = await response.json();
   if (data.errors) {
     console.error("Shopify API errors:", data.errors);
-    throw new Error(`Shopify error: ${data.errors.map((e: { message: string }) => e.message).join(', ')}`);
   }
   return data;
 }
 
-// Convenience wrapper that returns just the data portion
 export async function shopifyFetch(query: string, variables: Record<string, unknown> = {}) {
   const json = await storefrontApiRequest(query, variables);
   return json?.data;
 }
 
-// Queries
+// ── Checkout helpers ──
+
+export async function createCheckout(
+  variantId: string,
+  quantity: number = 1
+): Promise<string | null> {
+  const merchandiseId = variantId.includes("gid://")
+    ? variantId
+    : `gid://shopify/ProductVariant/${variantId}`
+
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: HEADERS,
+    body: JSON.stringify({
+      query: `
+        mutation cartCreate($input: CartInput!) {
+          cartCreate(input: $input) {
+            cart { id checkoutUrl }
+            userErrors { field message }
+          }
+        }
+      `,
+      variables: {
+        input: {
+          lines: [{ quantity, merchandiseId }]
+        }
+      }
+    })
+  })
+
+  const json = await res.json()
+  const errors = json?.data?.cartCreate?.userErrors
+  const url = json?.data?.cartCreate?.cart?.checkoutUrl
+
+  if (errors && errors.length > 0) {
+    console.error("Cart errors:", errors)
+    return null
+  }
+  return url || null
+}
+
+export async function createCartWithItems(
+  lines: Array<{ variantId: string; quantity: number }>
+): Promise<string | null> {
+  const formattedLines = lines.map(line => ({
+    quantity: line.quantity,
+    merchandiseId: line.variantId.includes("gid://")
+      ? line.variantId
+      : `gid://shopify/ProductVariant/${line.variantId}`
+  }))
+
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: HEADERS,
+    body: JSON.stringify({
+      query: `
+        mutation cartCreate($input: CartInput!) {
+          cartCreate(input: $input) {
+            cart { id checkoutUrl }
+            userErrors { field message }
+          }
+        }
+      `,
+      variables: {
+        input: { lines: formattedLines }
+      }
+    })
+  })
+
+  const json = await res.json()
+  return json?.data?.cartCreate?.cart?.checkoutUrl || null
+}
+
+// ── Queries ──
+
 export const PRODUCTS_QUERY = `
   query GetProducts($first: Int!, $query: String) {
     products(first: $first, query: $query) {
@@ -200,102 +272,3 @@ export const NEWEST_PRODUCTS_QUERY = `
     }
   }
 `;
-
-// Cart mutations
-export const CART_QUERY = `query cart($id: ID!) { cart(id: $id) { id totalQuantity } }`;
-
-export const CART_CREATE_MUTATION = `
-  mutation cartCreate($input: CartInput!) {
-    cartCreate(input: $input) {
-      cart {
-        id checkoutUrl
-        lines(first: 100) { edges { node { id merchandise { ... on ProductVariant { id } } } } }
-      }
-      userErrors { field message }
-    }
-  }
-`;
-
-export const CART_LINES_ADD_MUTATION = `
-  mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
-    cartLinesAdd(cartId: $cartId, lines: $lines) {
-      cart { id lines(first: 100) { edges { node { id merchandise { ... on ProductVariant { id } } } } } }
-      userErrors { field message }
-    }
-  }
-`;
-
-export const CART_LINES_UPDATE_MUTATION = `
-  mutation cartLinesUpdate($cartId: ID!, $lines: [CartLineUpdateInput!]!) {
-    cartLinesUpdate(cartId: $cartId, lines: $lines) {
-      cart { id }
-      userErrors { field message }
-    }
-  }
-`;
-
-export const CART_LINES_REMOVE_MUTATION = `
-  mutation cartLinesRemove($cartId: ID!, $lineIds: [ID!]!) {
-    cartLinesRemove(cartId: $cartId, lineIds: $lineIds) {
-      cart { id }
-      userErrors { field message }
-    }
-  }
-`;
-
-function formatCheckoutUrl(checkoutUrl: string): string {
-  try {
-    const url = new URL(checkoutUrl);
-    url.searchParams.set('channel', 'online_store');
-    return url.toString();
-  } catch {
-    return checkoutUrl;
-  }
-}
-
-function isCartNotFoundError(userErrors: Array<{ field: string[] | null; message: string }>): boolean {
-  return userErrors.some(e => e.message.toLowerCase().includes('cart not found') || e.message.toLowerCase().includes('does not exist'));
-}
-
-export async function createShopifyCart(item: { variantId: string; quantity: number }) {
-  const data = await storefrontApiRequest(CART_CREATE_MUTATION, {
-    input: { lines: [{ quantity: item.quantity, merchandiseId: item.variantId }] },
-  });
-  if (data?.data?.cartCreate?.userErrors?.length > 0) {
-    console.error('Cart creation errors:', data.data.cartCreate.userErrors);
-    return null;
-  }
-  const cart = data?.data?.cartCreate?.cart;
-  if (!cart?.checkoutUrl) return null;
-  const lineId = cart.lines.edges[0]?.node?.id;
-  if (!lineId) return null;
-  return { cartId: cart.id, checkoutUrl: formatCheckoutUrl(cart.checkoutUrl), lineId };
-}
-
-export async function addLineToShopifyCart(cartId: string, item: { variantId: string; quantity: number }) {
-  const data = await storefrontApiRequest(CART_LINES_ADD_MUTATION, {
-    cartId, lines: [{ quantity: item.quantity, merchandiseId: item.variantId }],
-  });
-  const userErrors = data?.data?.cartLinesAdd?.userErrors || [];
-  if (isCartNotFoundError(userErrors)) return { success: false, cartNotFound: true };
-  if (userErrors.length > 0) return { success: false };
-  const lines = data?.data?.cartLinesAdd?.cart?.lines?.edges || [];
-  const newLine = lines.find((l: { node: { merchandise: { id: string } } }) => l.node.merchandise.id === item.variantId);
-  return { success: true, lineId: newLine?.node?.id };
-}
-
-export async function updateShopifyCartLine(cartId: string, lineId: string, quantity: number) {
-  const data = await storefrontApiRequest(CART_LINES_UPDATE_MUTATION, { cartId, lines: [{ id: lineId, quantity }] });
-  const userErrors = data?.data?.cartLinesUpdate?.userErrors || [];
-  if (isCartNotFoundError(userErrors)) return { success: false, cartNotFound: true };
-  if (userErrors.length > 0) return { success: false };
-  return { success: true };
-}
-
-export async function removeLineFromShopifyCart(cartId: string, lineId: string) {
-  const data = await storefrontApiRequest(CART_LINES_REMOVE_MUTATION, { cartId, lineIds: [lineId] });
-  const userErrors = data?.data?.cartLinesRemove?.userErrors || [];
-  if (isCartNotFoundError(userErrors)) return { success: false, cartNotFound: true };
-  if (userErrors.length > 0) return { success: false };
-  return { success: true };
-}
