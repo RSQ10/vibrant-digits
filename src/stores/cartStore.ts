@@ -40,14 +40,21 @@ function toGid(variantId: string): string {
     : `gid://shopify/ProductVariant/${variantId}`;
 }
 
+// THE fix: Shopify returns checkoutUrl on glow-gadget.shop (your Vercel domain).
+// Vercel catches every URL on that domain and serves index.html → homepage.
+// Solution: rewrite the URL to go directly to myshopify.com which Vercel
+// does NOT control, so checkout loads correctly every time.
 function fixCheckoutUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   try {
     const parsed = new URL(url);
-    // Force domain to raw myshopify.com
+    // Force to raw myshopify.com — bypasses Vercel completely
     parsed.hostname = SHOPIFY_DOMAIN;
-    // Convert /cart/c/ permalink to /checkouts/ which works on myshopify.com
-    parsed.pathname = parsed.pathname.replace("/cart/c/", "/checkouts/");
+    // /cart/c/ is a permalink only valid on the primary domain.
+    // /checkouts/ works on myshopify.com natively.
+    if (parsed.pathname.startsWith("/cart/c/")) {
+      parsed.pathname = parsed.pathname.replace("/cart/c/", "/checkouts/");
+    }
     return parsed.toString();
   } catch {
     return url
@@ -134,6 +141,7 @@ export const useCartStore = create<CartStore>()(
 
             cartId = cart.id;
             checkoutUrl = fixCheckoutUrl(cart.checkoutUrl);
+            console.log("✅ Checkout URL:", checkoutUrl);
             set({ cartId, checkoutUrl });
 
           } else {
@@ -159,6 +167,7 @@ export const useCartStore = create<CartStore>()(
             checkoutUrl = fixCheckoutUrl(
               data?.data?.cartLinesAdd?.cart?.checkoutUrl ?? get().checkoutUrl
             );
+            console.log("✅ Checkout URL:", checkoutUrl);
             set({ checkoutUrl });
           }
 
