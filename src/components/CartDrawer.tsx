@@ -143,15 +143,23 @@ export const CartDrawer = () => {
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + (parseFloat(item.price.amount) * item.quantity), 0);
 
-  const handlePrepareCheckout = async () => {
+  const handlePrepareAndRedirect = async () => {
     setPreparing(true);
     const lines = items.map(item => ({
       variantId: item.variantId,
       quantity: item.quantity,
     }));
     const url = await createCartWithItems(lines);
-    if (url) setCartCheckoutUrl(url);
     setPreparing(false);
+    if (url) {
+      setShowPrepaidPopup(false);
+      const link = document.createElement("a");
+      link.href = url;
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const handleCheckout = () => {
