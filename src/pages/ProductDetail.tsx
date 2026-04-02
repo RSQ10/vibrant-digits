@@ -129,27 +129,27 @@ const ProductDetail = () => {
         ? variantId
         : `gid://shopify/ProductVariant/${variantId}`;
 
-      const data = await shopifyFetch(`
-        mutation {
-          cartCreate(input: {
-            lines: [{
-              quantity: ${quantity}
-              merchandiseId: "${merchandiseId}"
-            }]
-          }) {
+      console.log("Buy Now - merchandiseId:", merchandiseId, "quantity:", quantity);
+
+      const data = await shopifyFetch(
+        `mutation cartCreate($input: CartInput!) {
+          cartCreate(input: $input) {
             cart { checkoutUrl }
-            userErrors { message }
+            userErrors { field message }
           }
-        }
-      `);
+        }`,
+        { input: { lines: [{ quantity, merchandiseId }] } }
+      );
 
       console.log("Buy Now response:", JSON.stringify(data));
 
       const url = data?.cartCreate?.cart?.checkoutUrl;
+      const errors = data?.cartCreate?.userErrors;
+
       if (url) {
         window.location.href = url;
       } else {
-        console.error("No checkout URL:", data?.cartCreate?.userErrors);
+        console.error("No checkout URL. Errors:", errors);
         toast.error("Could not create checkout. Please try again.");
       }
     } catch (err) {
