@@ -118,43 +118,49 @@ const ProductDetail = () => {
   };
 
   const handleBuyNow = async () => {
-    try {
-      const variantId = variant?.id || product?.variants?.edges?.[0]?.node?.id;
-      if (!variantId) {
-        toast.error("Please select a variant");
-        return;
+    const variantNode = product?.variants?.edges?.[selectedVariantIdx]?.node || product?.variants?.edges?.[0]?.node;
+    const variantId = variantNode?.id;
+    if (!variantId) {
+      alert("No variant found: " + JSON.stringify(product?.variants));
+      return;
+    }
+
+    const merchandiseId = variantId.includes("gid://")
+      ? variantId
+      : `gid://shopify/ProductVariant/${variantId}`;
+
+    const response = await fetch(
+      "https://jk0yez-6r.myshopify.com/api/2024-01/graphql.json",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Storefront-Access-Token": "c12677814d108cc0d536f2b653ce71b0",
+        },
+        body: JSON.stringify({
+          query: `mutation cartCreate($input: CartInput!) {
+            cartCreate(input: $input) {
+              cart { id checkoutUrl }
+              userErrors { field message }
+            }
+          }`,
+          variables: {
+            input: {
+              lines: [{ quantity, merchandiseId }],
+            },
+          },
+        }),
       }
+    );
 
-      const merchandiseId = variantId.startsWith("gid://")
-        ? variantId
-        : `gid://shopify/ProductVariant/${variantId}`;
+    const text = await response.text();
+    alert("API Response: " + text);
+    const json = JSON.parse(text);
+    const url = json?.data?.cartCreate?.cart?.checkoutUrl;
+    alert("Checkout URL: " + url);
 
-      console.log("Buy Now - merchandiseId:", merchandiseId, "quantity:", quantity);
-
-      const data = await shopifyFetch(
-        `mutation cartCreate($input: CartInput!) {
-          cartCreate(input: $input) {
-            cart { checkoutUrl }
-            userErrors { field message }
-          }
-        }`,
-        { input: { lines: [{ quantity, merchandiseId }] } }
-      );
-
-      console.log("Buy Now response:", JSON.stringify(data));
-
-      const url = data?.cartCreate?.cart?.checkoutUrl;
-      const errors = data?.cartCreate?.userErrors;
-
-      if (url) {
-        window.location.href = url;
-      } else {
-        console.error("No checkout URL. Errors:", errors);
-        toast.error("Could not create checkout. Please try again.");
-      }
-    } catch (err) {
-      console.error("Buy now error:", err);
-      toast.error("Checkout failed. Please try again.");
+    if (url) {
+      window.location.assign(url);
     }
   };
 
