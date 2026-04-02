@@ -136,24 +136,26 @@ const PrepaidPopup = ({
 export const CartDrawer = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [showPrepaidPopup, setShowPrepaidPopup] = useState(false);
-  const { items, isLoading, isSyncing, updateQuantity, removeItem, getCheckoutUrl, syncCart } = useCartStore();
+  const [cartCheckoutUrl, setCartCheckoutUrl] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const { items, isLoading, updateQuantity, removeItem } = useCartStore();
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = items.reduce((sum, item) => sum + (parseFloat(item.price.amount) * item.quantity), 0);
 
-  useEffect(() => { if (isOpen) syncCart(); }, [isOpen, syncCart]);
-
-  const proceedToCheckout = () => {
-    const checkoutUrl = getCheckoutUrl();
-    if (checkoutUrl) {
-      setIsOpen(false);
-      setShowPrepaidPopup(false);
-      window.location.href = checkoutUrl;
-    }
+  const handlePrepareCheckout = async () => {
+    setPreparing(true);
+    const lines = items.map(item => ({
+      variantId: item.variantId,
+      quantity: item.quantity,
+    }));
+    const url = await createCartWithItems(lines);
+    if (url) setCartCheckoutUrl(url);
+    setPreparing(false);
   };
 
   const handleCheckout = () => {
-    setIsOpen(false); // Close sheet first
-    setTimeout(() => setShowPrepaidPopup(true), 300); // Then show popup after sheet animation
+    setIsOpen(false);
+    setTimeout(() => setShowPrepaidPopup(true), 300);
   };
 
   return (

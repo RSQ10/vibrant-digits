@@ -101,10 +101,12 @@ const ProductDetail = () => {
 
   const images = product.images.edges;
 
-  const handleAddToCart = async () => {
-    if (!variant) return;
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [loadingCheckout, setLoadingCheckout] = useState(false);
 
-    await addItem({
+  const handleAddToCart = () => {
+    if (!variant) return;
+    addItem({
       product: { node: product },
       variantId: variant.id,
       variantTitle: variant.title,
@@ -112,54 +114,16 @@ const ProductDetail = () => {
       quantity,
       selectedOptions: variant.selectedOptions || [],
     });
-
     toast.success(`${product.title} added to cart`);
   };
 
-  const handleBuyNow = async () => {
-    const variantNode = product?.variants?.edges?.[selectedVariantIdx]?.node || product?.variants?.edges?.[0]?.node;
-    const variantId = variantNode?.id;
-    if (!variantId) return;
-
-    const merchandiseId = variantId.includes("gid://")
-      ? variantId
-      : `gid://shopify/ProductVariant/${variantId}`;
-
-    const response = await fetch(
-      "https://jk0yez-6r.myshopify.com/api/2024-01/graphql.json",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Shopify-Storefront-Access-Token": "c12677814d108cc0d536f2b653ce71b0",
-        },
-        body: JSON.stringify({
-          query: `mutation cartCreate($input: CartInput!) {
-            cartCreate(input: $input) {
-              cart { id checkoutUrl }
-              userErrors { field message }
-            }
-          }`,
-          variables: {
-            input: {
-              lines: [{ quantity, merchandiseId }],
-            },
-          },
-        }),
-      }
-    );
-
-    const json = await response.json();
-    const url = json?.data?.cartCreate?.cart?.checkoutUrl;
-
-    if (url) {
-      const link = document.createElement("a");
-      link.href = url;
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+  const generateCheckoutUrl = async () => {
+    setLoadingCheckout(true);
+    const variantId = variant?.id || product?.variants?.edges?.[0]?.node?.id;
+    if (!variantId) { setLoadingCheckout(false); return; }
+    const url = await createCheckout(variantId, quantity);
+    if (url) setCheckoutUrl(url);
+    setLoadingCheckout(false);
   };
 
   return (
@@ -202,9 +166,7 @@ const ProductDetail = () => {
               <Button onClick={() => setQuantity(q => Math.max(1, q - 1))}>
                 <Minus />
               </Button>
-
               <span>{quantity}</span>
-
               <Button onClick={() => setQuantity(q => q + 1)}>
                 <Plus />
               </Button>
@@ -215,9 +177,21 @@ const ProductDetail = () => {
               <Button onClick={handleAddToCart} disabled={isLoading} variant="outline" className="flex-1">
                 {isLoading ? <Loader2 className="animate-spin" /> : "Add to Cart"}
               </Button>
-              <Button onClick={handleBuyNow} disabled={isLoading} className="flex-1">
-                {isLoading ? <Loader2 className="animate-spin" /> : "Buy Now"}
-              </Button>
+
+              {checkoutUrl ? (
+                <a
+                  href={checkoutUrl}
+                  target="_self"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center justify-center py-2.5 px-6 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 transition-colors"
+                >
+                  Proceed to Checkout →
+                </a>
+              ) : (
+                <Button onClick={generateCheckoutUrl} disabled={loadingCheckout} className="flex-1">
+                  {loadingCheckout ? <Loader2 className="animate-spin" /> : "Buy Now"}
+                </Button>
+              )}
             </div>
 
             {/* Description */}
