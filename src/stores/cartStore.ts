@@ -2,9 +2,6 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-// Uses env vars (set these in Vercel → Project Settings → Environment Variables)
-// VITE_SHOPIFY_STORE_DOMAIN  = jk0yez-6r.myshopify.com
-// VITE_SHOPIFY_STOREFRONT_TOKEN = c12677814d108cc0d536f2b653ce71b0
 const SHOPIFY_DOMAIN = import.meta.env.VITE_SHOPIFY_STORE_DOMAIN || "jk0yez-6r.myshopify.com";
 const SHOPIFY_TOKEN = import.meta.env.VITE_SHOPIFY_STOREFRONT_TOKEN || "c12677814d108cc0d536f2b653ce71b0";
 const SHOPIFY_URL = `https://${SHOPIFY_DOMAIN}/api/2024-01/graphql.json`;
@@ -13,6 +10,9 @@ const HEADERS = {
   "Content-Type": "application/json",
   "X-Shopify-Storefront-Access-Token": SHOPIFY_TOKEN,
 };
+
+// Special return value so UI can show "Out of Stock" instead of silent fail
+export const OUT_OF_STOCK = "OUT_OF_STOCK" as const;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface CartItem {
@@ -30,6 +30,7 @@ interface CartStore {
   cartId: string | null;
   checkoutUrl: string | null;
 
+  // Returns checkoutUrl string, "OUT_OF_STOCK", or null on error
   addItem: (item: CartItem) => Promise<string | null>;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
@@ -45,12 +46,20 @@ function toGid(variantId: string): string {
     : `gid://shopify/ProductVariant/${variantId}`;
 }
 
-// Shopify returns checkoutUrl using the custom domain (glow-gadget.shop)
-// but that domain points to Vercel (our frontend), not Shopify checkout.
-// We rewrite it to the myshopify.com domain so checkout always works.
-function fixCheckoutUrl(url: string | null): string | null {
+// Shopify returns checkoutUrl on the custom domain (glow-gadget.shop)
+// which points to Vercel — not Shopify checkout. Rewrite to myshopify.com.
+function fixCheckoutUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   return url.replace("glow-gadget.shop", SHOPIFY_DOMAIN);
+}
+
+function isOutOfStockError(errors: Array<{ message: string }>): boolean {
+  return errors.some((e) =>
+    e.message.toLowerCase().includes("does not exist") ||
+    e.message.toLowerCase().includes("unavailable") ||
+    e.message.toLowerCase().includes("out of stock") ||
+    e.message.toLowerCase().includes("not available")
+  );
 }
 
 async function shopifyMutation(query: string, variables: Record<string, unknown>) {
@@ -72,12 +81,11 @@ export const useCartStore = create<CartStore>()(
       cartId: null,
       checkoutUrl: null,
 
-      // ── Add item & return checkoutUrl ──────────────────────────────────────
       addItem: async (item: CartItem): Promise<string | null> => {
         set({ isLoading: true });
 
         try {
-          // 1. Update local state first (optimistic)
+          // 1. Update local state optimistically
           const items = get().items || [];
           const existing = items.find((i) => i.variantId === item.variantId);
           if (existing) {
@@ -97,37 +105,32 @@ export const useCartStore = create<CartStore>()(
           let checkoutUrl: string | null = null;
 
           if (!cartId) {
-            // 2a. Create a new Shopify cart with this item
+            // 2a. Create new cart
             const data = await shopifyMutation(
               `mutation cartCreate($input: CartInput!) {
                 cartCreate(input: $input) {
-                  cart {
-                    id
-                    checkoutUrl
-                  }
-                  userErrors {
-                    field
-                    message
-                  }
+                  cart { id checkoutUrl }
+                  userErrors { field message }
                 }
               }`,
-              {
-                input: {
-                  lines: [{ quantity: item.quantity, merchandiseId }],
-                },
-              }
+              { input: { lines: [{ quantity: item.quantity, merchandiseId }] } }
             );
 
-            const errors = data?.data?.cartCreate?.userErrors;
-            if (errors?.length > 0) {
+            const errors = data?.data?.cartCreate?.userErrors ?? [];
+
+            if (errors.length > 0) {
               console.error("Shopify cartCreate errors:", errors);
-              set({ isLoading: false });
-              return null;
+              // Roll back optimistic update
+              set({
+                items: (get().items || []).filter((i) => i.variantId !== item.variantId),
+                isLoading: false,
+              });
+              return isOutOfStockError(errors) ? OUT_OF_STOCK : null;
             }
 
             const cart = data?.data?.cartCreate?.cart;
             if (!cart) {
-              console.error("Shopify cartCreate returned no cart");
+              console.error("cartCreate returned no cart and no errors");
               set({ isLoading: false });
               return null;
             }
@@ -135,40 +138,37 @@ export const useCartStore = create<CartStore>()(
             cartId = cart.id;
             checkoutUrl = fixCheckoutUrl(cart.checkoutUrl);
             set({ cartId, checkoutUrl });
+
           } else {
-            // 2b. Add line to existing cart
+            // 2b. Add to existing cart
             const data = await shopifyMutation(
               `mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
                 cartLinesAdd(cartId: $cartId, lines: $lines) {
-                  cart {
-                    id
-                    checkoutUrl
-                  }
-                  userErrors {
-                    field
-                    message
-                  }
+                  cart { id checkoutUrl }
+                  userErrors { field message }
                 }
               }`,
-              {
-                cartId,
-                lines: [{ quantity: item.quantity, merchandiseId }],
-              }
+              { cartId, lines: [{ quantity: item.quantity, merchandiseId }] }
             );
 
-            const errors = data?.data?.cartLinesAdd?.userErrors;
-            if (errors?.length > 0) {
+            const errors = data?.data?.cartLinesAdd?.userErrors ?? [];
+            if (errors.length > 0) {
               console.error("Shopify cartLinesAdd errors:", errors);
+              if (isOutOfStockError(errors)) {
+                set({ isLoading: false });
+                return OUT_OF_STOCK;
+              }
             }
 
             checkoutUrl = fixCheckoutUrl(
-              data?.data?.cartLinesAdd?.cart?.checkoutUrl || get().checkoutUrl
+              data?.data?.cartLinesAdd?.cart?.checkoutUrl ?? get().checkoutUrl
             );
             set({ checkoutUrl });
           }
 
           set({ isLoading: false });
           return checkoutUrl;
+
         } catch (err) {
           console.error("addItem failed:", err);
           set({ isLoading: false });
@@ -176,14 +176,12 @@ export const useCartStore = create<CartStore>()(
         }
       },
 
-      // ── Remove item (local only — cart stays valid on Shopify side) ─────────
       removeItem: (variantId: string) => {
         set((state) => ({
           items: (state.items || []).filter((i) => i.variantId !== variantId),
         }));
       },
 
-      // ── Update quantity locally ────────────────────────────────────────────
       updateQuantity: (variantId: string, quantity: number) => {
         if (quantity <= 0) {
           get().removeItem(variantId);
@@ -196,12 +194,10 @@ export const useCartStore = create<CartStore>()(
         }));
       },
 
-      // ── Clear cart ────────────────────────────────────────────────────────
       clearCart: () => {
         set({ items: [], cartId: null, checkoutUrl: null });
       },
 
-      // ── Derived values ────────────────────────────────────────────────────
       getTotal: () => {
         return (get().items || []).reduce((sum, item) => {
           return sum + parseFloat(item.price.amount) * item.quantity;
