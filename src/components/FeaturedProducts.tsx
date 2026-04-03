@@ -51,9 +51,8 @@ export const FeaturedProducts = () => {
   const scroll = (dir: 'left' | 'right') => {
     const el = scrollRef.current;
     if (!el) return;
-    // Scroll exactly one card width at a time
-    const card = el.querySelector('div') as HTMLElement;
-    const cardWidth = card ? card.offsetWidth + 24 : 300;
+    const card = el.querySelector('[data-card]') as HTMLElement;
+    const cardWidth = card ? card.offsetWidth + 16 : 200;
     el.scrollBy({ left: dir === 'left' ? -cardWidth : cardWidth, behavior: 'smooth' });
   };
 
@@ -65,61 +64,69 @@ export const FeaturedProducts = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.3 }}
-          className="flex items-center justify-between mb-12"
+          className="flex items-start justify-between mb-8 gap-4"
         >
           <div>
-            <h2 className="text-3xl lg:text-4xl font-bold text-heading mb-3">Featured Products</h2>
-            <p className="text-body max-w-md">Handpicked essentials loved by thousands across India.</p>
+            <h2 className="text-2xl lg:text-4xl font-bold text-heading mb-2">Featured Products</h2>
+            <p className="text-sm lg:text-base text-body">Handpicked essentials loved by thousands across India.</p>
           </div>
 
-          {!loading && products.length > 4 && (
-            <div className="flex items-center gap-2 flex-shrink-0">
+          {!loading && products.length > 0 && (
+            <div className="flex items-center gap-2 flex-shrink-0 mt-1">
               <button
                 onClick={() => scroll('left')}
                 disabled={!canScrollLeft}
-                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${
+                className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all ${
                   canScrollLeft
                     ? 'border-primary text-primary hover:bg-primary hover:text-white'
                     : 'border-border text-muted-foreground opacity-40 cursor-not-allowed'
                 }`}
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={() => scroll('right')}
                 disabled={!canScrollRight}
-                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${
+                className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all ${
                   canScrollRight
                     ? 'border-primary text-primary hover:bg-primary hover:text-white'
                     : 'border-border text-muted-foreground opacity-40 cursor-not-allowed'
                 }`}
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           )}
         </motion.div>
 
-        {/* Single horizontal scrollable row — always 4 cards visible */}
+        {/* Scrollable row — 2 cards on mobile, 4 on desktop */}
         <div
           ref={scrollRef}
-          className="flex gap-6 overflow-x-auto scroll-smooth pb-2"
+          className="flex gap-4 overflow-x-auto scroll-smooth pb-2"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <style>{`div::-webkit-scrollbar { display: none; }`}</style>
           {loading
             ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="flex-shrink-0" style={{ width: 'calc(25% - 18px)' }}>
+                <div
+                  key={i}
+                  data-card
+                  className="flex-shrink-0 w-[calc(50%-8px)] lg:w-[calc(25%-12px)]"
+                >
                   <ProductCardSkeleton />
                 </div>
               ))
             : products.length > 0
               ? products.map(p => (
-                  <div key={p.node.id} className="flex-shrink-0" style={{ width: 'calc(25% - 18px)' }}>
+                  <div
+                    key={p.node.id}
+                    data-card
+                    className="flex-shrink-0 w-[calc(50%-8px)] lg:w-[calc(25%-12px)]"
+                  >
                     <ProductCard product={p} />
                   </div>
                 ))
-              : <p className="text-center text-muted-foreground w-full">No products found.</p>
+              : <p className="text-center text-muted-foreground w-full py-12">No products found.</p>
           }
         </div>
       </div>
