@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { storefrontApiRequest, PRODUCTS_QUERY, type ShopifyProduct } from '@/lib/shopify';
+import { shopifyFetch, COLLECTION_PRODUCTS_QUERY, type ShopifyProduct } from '@/lib/shopify';
 import { ProductCard, ProductCardSkeleton } from './ProductCard';
 import { motion } from 'framer-motion';
 
@@ -10,16 +10,15 @@ export const FeaturedProducts = () => {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        // Try featured tag first, fallback to first 4
-        let data = await storefrontApiRequest(PRODUCTS_QUERY, { first: 4, query: 'tag:featured' });
-        let edges = data?.data?.products?.edges || [];
-        if (edges.length === 0) {
-          data = await storefrontApiRequest(PRODUCTS_QUERY, { first: 4 });
-          edges = data?.data?.products?.edges || [];
-        }
+        // Fetch from "Home page" collection (handle: frontpage)
+        const data = await shopifyFetch(COLLECTION_PRODUCTS_QUERY, {
+          handle: 'frontpage',
+          first: 4,
+        });
+        const edges = data?.collection?.products?.edges || [];
         setProducts(edges);
       } catch (error) {
-        console.error('Failed to fetch products:', error);
+        console.error('Failed to fetch featured products:', error);
       } finally {
         setLoading(false);
       }
