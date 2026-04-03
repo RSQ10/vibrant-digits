@@ -1,12 +1,27 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Minus, Plus, ShoppingCart, Zap, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Minus, Plus, ShoppingCart, Zap, Star, Truck } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, type ShopifyProduct } from '@/lib/shopify';
 import { useCartStore, OUT_OF_STOCK } from '@/stores/cartStore';
 import { toast } from 'sonner';
+
+// ─── Delivery Estimation ──────────────────────────────────────────────────────
+function getDeliveryRange(): string {
+  const now = new Date();
+  const start = new Date(now);
+  const end = new Date(now);
+
+  start.setDate(now.getDate() + 3);
+  end.setDate(now.getDate() + 5);
+
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+
+  return `${fmt(start)} – ${fmt(end)}`;
+}
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 const ProductDetailSkeleton = () => (
@@ -48,6 +63,7 @@ const ProductDetail = () => {
   const [addToCartLoading, setAddToCartLoading] = useState(false);
 
   const addItem = useCartStore((state) => state.addItem);
+  const deliveryRange = getDeliveryRange();
 
   // ── Fetch product ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -87,7 +103,6 @@ const ProductDetail = () => {
   const images = product.images.edges.map((e) => e.node);
   const variants = product.variants.edges.map((e) => e.node);
 
-  // Find matching variant based on selected options
   const selectedVariant = variants.find((v) =>
     v.selectedOptions.every((opt) => selectedOptions[opt.name] === opt.value)
   ) || variants[0];
@@ -98,8 +113,6 @@ const ProductDetail = () => {
     : null;
   const isOnSale = compareAt && compareAt > price;
   const discount = isOnSale ? Math.round(((compareAt - price) / compareAt) * 100) : 0;
-
-  // Use Shopify's availableForSale directly — this is the source of truth
   const available = selectedVariant?.availableForSale === true;
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -292,7 +305,18 @@ const ProductDetail = () => {
               )}
             </div>
 
-            {/* Stock status — driven by Shopify availableForSale */}
+            {/* ── Delivery Estimation ── */}
+            {available && (
+              <div className="flex items-center gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                <Truck className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="text-sm">
+                  <span className="text-green-800 font-semibold">Estimated delivery: </span>
+                  <span className="text-green-700 font-medium">{deliveryRange}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Stock status */}
             <div>
               {available ? (
                 <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600">
@@ -337,7 +361,7 @@ const ProductDetail = () => {
                 </div>
               ))}
 
-            {/* Quantity Selector — hidden when out of stock */}
+            {/* Quantity Selector */}
             {available && (
               <div>
                 <p className="text-sm font-semibold text-heading mb-2">Quantity</p>
