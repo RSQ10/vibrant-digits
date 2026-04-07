@@ -26,7 +26,7 @@ interface CartStore {
   isLoading: boolean;
   cartId: string | null;
   checkoutUrl: string | null;
-  addItem: (item: CartItem) => Promise<string | null>;
+  addItem: (item: CartItem) => Promise<string | typeof OUT_OF_STOCK | null>;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
   clearCart: () => void;
@@ -40,27 +40,33 @@ function toGid(variantId: string): string {
     : `gid://shopify/ProductVariant/${variantId}`;
 }
 
-// Now that jk0yez-6r.myshopify.com is primary domain,
-// Shopify generates /cart/c/ URLs directly on myshopify.com.
-// We only need to ensure the hostname is myshopify.com — no path rewriting.
 function fixCheckoutUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   try {
     const parsed = new URL(url);
-    parsed.hostname = SHOPIFY_DOMAIN;
+    // Replace custom domain with myshopify.com domain
+    if (parsed.hostname !== SHOPIFY_DOMAIN) {
+      parsed.hostname = SHOPIFY_DOMAIN;
+    }
+    // Add channel=online_store to bypass password protection
+    parsed.searchParams.set("channel", "online_store");
     return parsed.toString();
   } catch {
-    return url.replace(/^https?:\/\/[^/]+/, `https://${SHOPIFY_DOMAIN}`);
+    return url
+      .replace(/^https?:\/\/[^/]+/, `https://${SHOPIFY_DOMAIN}`);
   }
 }
 
 function isOutOfStockError(errors: Array<{ message: string }>): boolean {
-  return errors.some((e) =>
-    e.message.toLowerCase().includes("does not exist") ||
-    e.message.toLowerCase().includes("unavailable") ||
-    e.message.toLowerCase().includes("out of stock") ||
-    e.message.toLowerCase().includes("not available")
-  );
+  return errors.some((e) => {
+    const msg = e.message.toLowerCase();
+    return (
+      msg.includes("does not exist") ||
+      msg.includes("unavailable") ||
+      msg.includes("out of stock") ||
+      msg.includes("not available")
+    );
+  });
 }
 
 async function shopifyMutation(query: string, variables: Record<string, unknown>) {
@@ -73,6 +79,30 @@ async function shopifyMutation(query: string, variables: Record<string, unknown>
   return res.json();
 }
 
+const CART_CREATE_MUTATION = `
+  mutation cartCreate($input: CartInput!) {
+    cartCreate(input: $input) {
+      cart { id checkoutUrl }
+      userErrors { field message }
+    }
+  }
+`;
+
+const CART_LINES_ADD_MUTATION = `
+  mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
+    cartLinesAdd(cartId: $cartId, lines: $lines) {
+      cart { id checkoutUrl }
+      userErrors { field message }
+    }
+  }
+`;
+
+async function createCart(merchandiseId: string, quantity: number) {
+  return shopifyMutation(CART_CREATE_MUTATION, {
+    input: { lines: [{ quantity, merchandiseId }] },
+  });
+}
+
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
@@ -81,7 +111,7 @@ export const useCartStore = create<CartStore>()(
       cartId: null,
       checkoutUrl: null,
 
-      addItem: async (item: CartItem): Promise<string | null> => {
+      addItem: async (item: CartItem): Promise<string | typeof OUT_OF_STOCK | null> => {
         set({ isLoading: true });
         try {
           const items = get().items || [];
@@ -103,16 +133,8 @@ export const useCartStore = create<CartStore>()(
           let checkoutUrl: string | null = null;
 
           if (!cartId) {
-            const data = await shopifyMutation(
-              `mutation cartCreate($input: CartInput!) {
-                cartCreate(input: $input) {
-                  cart { id checkoutUrl }
-                  userErrors { field message }
-                }
-              }`,
-              { input: { lines: [{ quantity: item.quantity, merchandiseId }] } }
-            );
-
+            // Create fresh cart
+            const data = await createCart(merchandiseId, item.quantity);
             const errors = data?.data?.cartCreate?.userErrors ?? [];
             if (errors.length > 0) {
               console.error("cartCreate errors:", errors);
@@ -125,26 +147,20 @@ export const useCartStore = create<CartStore>()(
 
             const cart = data?.data?.cartCreate?.cart;
             if (!cart) {
-              console.error("cartCreate returned no cart — check Storefront API token permissions");
+              console.error("cartCreate returned no cart");
               set({ isLoading: false });
               return null;
             }
 
             cartId = cart.id;
             checkoutUrl = fixCheckoutUrl(cart.checkoutUrl);
-            console.log("✅ Checkout URL:", checkoutUrl);
             set({ cartId, checkoutUrl });
-
           } else {
-            const data = await shopifyMutation(
-              `mutation cartLinesAdd($cartId: ID!, $lines: [CartLineInput!]!) {
-                cartLinesAdd(cartId: $cartId, lines: $lines) {
-                  cart { id checkoutUrl }
-                  userErrors { field message }
-                }
-              }`,
-              { cartId, lines: [{ quantity: item.quantity, merchandiseId }] }
-            );
+            // Add to existing cart
+            const data = await shopifyMutation(CART_LINES_ADD_MUTATION, {
+              cartId,
+              lines: [{ quantity: item.quantity, merchandiseId }],
+            });
 
             const errors = data?.data?.cartLinesAdd?.userErrors ?? [];
             if (errors.length > 0) {
@@ -153,18 +169,43 @@ export const useCartStore = create<CartStore>()(
                 set({ isLoading: false });
                 return OUT_OF_STOCK;
               }
+
+              // Cart might be expired/invalid — reset and retry with fresh cart
+              console.warn("cartLinesAdd failed, retrying with fresh cart...");
+              set({ cartId: null, checkoutUrl: null });
+
+              const retryData = await createCart(merchandiseId, item.quantity);
+              const retryErrors = retryData?.data?.cartCreate?.userErrors ?? [];
+              if (retryErrors.length > 0) {
+                console.error("Retry cartCreate errors:", retryErrors);
+                set({
+                  items: (get().items || []).filter((i) => i.variantId !== item.variantId),
+                  isLoading: false,
+                });
+                return isOutOfStockError(retryErrors) ? OUT_OF_STOCK : null;
+              }
+
+              const retryCart = retryData?.data?.cartCreate?.cart;
+              if (!retryCart) {
+                set({ isLoading: false });
+                return null;
+              }
+
+              cartId = retryCart.id;
+              checkoutUrl = fixCheckoutUrl(retryCart.checkoutUrl);
+              set({ cartId, checkoutUrl });
+              set({ isLoading: false });
+              return checkoutUrl;
             }
 
             checkoutUrl = fixCheckoutUrl(
               data?.data?.cartLinesAdd?.cart?.checkoutUrl ?? get().checkoutUrl
             );
-            console.log("✅ Checkout URL:", checkoutUrl);
             set({ checkoutUrl });
           }
 
           set({ isLoading: false });
           return checkoutUrl;
-
         } catch (err) {
           console.error("addItem failed:", err);
           set({ isLoading: false });
@@ -195,9 +236,10 @@ export const useCartStore = create<CartStore>()(
       },
 
       getTotal: () => {
-        return (get().items || []).reduce((sum, item) => {
-          return sum + parseFloat(item.price.amount) * item.quantity;
-        }, 0);
+        return (get().items || []).reduce(
+          (sum, item) => sum + parseFloat(item.price.amount) * item.quantity,
+          0
+        );
       },
 
       getItemCount: () => {
