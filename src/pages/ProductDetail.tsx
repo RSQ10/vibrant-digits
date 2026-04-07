@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, type ShopifyProduct } from '@/lib/shopify';
 import { useCartStore, OUT_OF_STOCK } from '@/stores/cartStore';
 import { toast } from 'sonner';
-import { ReviewSection } from '@/components/ReviewSection';
+import { ReviewSection } from '@/lib/ReviewSection';
 
 // ─── Delivery Estimation ──────────────────────────────────────────────────────
 function getDeliveryRange(): string {
@@ -77,6 +77,16 @@ const ProductDetail = () => {
           });
           setSelectedOptions(defaults);
         }
+        if (p) {
+          const pr = parseFloat(p.priceRange?.minVariantPrice?.amount || '0');
+          (window as any).fbq?.('track', 'ViewContent', {
+            content_name: p.title,
+            content_ids: [p.id],
+            content_type: 'product',
+            value: pr,
+            currency: 'INR',
+          });
+        }
       })
       .catch(() => setProduct(null))
       .finally(() => setLoading(false));
@@ -140,6 +150,12 @@ const ProductDetail = () => {
       if (result === OUT_OF_STOCK) {
         toast.error('This product is out of stock.');
       } else if (result) {
+        (window as any).fbq?.('track', 'AddToCart', {
+          content_name: product.title,
+          content_ids: [product.id],
+          value: price,
+          currency: 'INR',
+        });
         toast.success(`${product.title} added to cart!`);
       } else {
         toast.error('Failed to add to cart. Please try again.');
