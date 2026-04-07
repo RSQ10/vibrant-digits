@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, type ShopifyProduct } from '@/lib/shopify';
 import { useCartStore, OUT_OF_STOCK } from '@/stores/cartStore';
 import { toast } from 'sonner';
-import { ReviewSection } from '@/components/ReviewSection';
+import { ReviewSection } from '@/lib/ReviewSection';
 
 // ─── Delivery Estimation ──────────────────────────────────────────────────────
 function getDeliveryRange(): string {
