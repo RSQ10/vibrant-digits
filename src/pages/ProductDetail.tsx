@@ -152,6 +152,12 @@ const ProductDetail = () => {
       if (result === OUT_OF_STOCK) {
         toast.error('This product is out of stock.');
       } else if (result) {
+        (window as any).fbq?.('track', 'AddToCart', {
+          content_name: product.title,
+          content_ids: [product.id],
+          value: price,
+          currency: 'INR',
+        });
         toast.success(`${product.title} added to cart!`);
       } else {
         toast.error('Failed to add to cart. Please try again.');
