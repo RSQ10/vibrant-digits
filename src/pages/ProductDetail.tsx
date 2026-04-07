@@ -78,6 +78,18 @@ const ProductDetail = () => {
           setSelectedOptions(defaults);
         }
       })
+      .then((p2) => {
+        if (p2) {
+          const pr = parseFloat(p2.priceRange?.minVariantPrice?.amount || '0');
+          (window as any).fbq?.('track', 'ViewContent', {
+            content_name: p2.title,
+            content_ids: [p2.id],
+            content_type: 'product',
+            value: pr,
+            currency: 'INR',
+          });
+        }
+      })
       .catch(() => setProduct(null))
       .finally(() => setLoading(false));
   }, [handle]);
