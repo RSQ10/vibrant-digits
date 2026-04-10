@@ -14,4 +14,5 @@ export type Review = {
   comment: string;
   is_approved: boolean;
   created_at: string;
+  image_urls: string[];
 };
