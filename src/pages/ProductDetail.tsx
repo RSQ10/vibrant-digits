@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Minus, Plus, ShoppingCart, Zap, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Minus, Plus, ShoppingCart, Zap, Star, Truck } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, type ShopifyProduct } from '@/lib/shopify';
 import { useCartStore, OUT_OF_STOCK } from '@/stores/cartStore';
 import { toast } from 'sonner';
-import { ReviewSection } from '@/lib/ReviewSection';
+import { ReviewSection } from '@/components/ReviewSection';
 
 // ─── Delivery Estimation ──────────────────────────────────────────────────────
 function getDeliveryRange(): string {
@@ -77,16 +77,6 @@ const ProductDetail = () => {
           });
           setSelectedOptions(defaults);
         }
-        if (p) {
-          const pr = parseFloat(p.priceRange?.minVariantPrice?.amount || '0');
-          (window as any).fbq?.('track', 'ViewContent', {
-            content_name: p.title,
-            content_ids: [p.id],
-            content_type: 'product',
-            value: pr,
-            currency: 'INR',
-          });
-        }
       })
       .catch(() => setProduct(null))
       .finally(() => setLoading(false));
@@ -150,12 +140,6 @@ const ProductDetail = () => {
       if (result === OUT_OF_STOCK) {
         toast.error('This product is out of stock.');
       } else if (result) {
-        (window as any).fbq?.('track', 'AddToCart', {
-          content_name: product.title,
-          content_ids: [product.id],
-          value: price,
-          currency: 'INR',
-        });
         toast.success(`${product.title} added to cart!`);
       } else {
         toast.error('Failed to add to cart. Please try again.');
@@ -211,7 +195,9 @@ const ProductDetail = () => {
                   className="w-full h-full object-cover transition-all duration-300"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">No image</div>
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                  No image
+                </div>
               )}
               {isOnSale && (
                 <span className="absolute top-4 left-4 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-pill">
@@ -220,15 +206,23 @@ const ProductDetail = () => {
               )}
               {!available && (
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <span className="bg-white text-heading font-bold px-6 py-2 rounded-pill text-sm">Out of Stock</span>
+                  <span className="bg-white text-heading font-bold px-6 py-2 rounded-pill text-sm">
+                    Out of Stock
+                  </span>
                 </div>
               )}
               {images.length > 1 && (
                 <>
-                  <button onClick={() => handleImageNav('prev')} className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-default opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => handleImageNav('prev')}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-default opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
                     <ChevronLeft className="w-4 h-4 text-heading" />
                   </button>
-                  <button onClick={() => handleImageNav('next')} className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-default opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => handleImageNav('next')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-default opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
                     <ChevronRight className="w-4 h-4 text-heading" />
                   </button>
                 </>
@@ -241,10 +235,16 @@ const ProductDetail = () => {
                     key={i}
                     onClick={() => setActiveImageIndex(i)}
                     className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 flex-shrink-0 ${
-                      i === activeImageIndex ? 'border-primary shadow-hover' : 'border-border hover:border-primary/50'
+                      i === activeImageIndex
+                        ? 'border-primary shadow-hover'
+                        : 'border-border hover:border-primary/50'
                     }`}
                   >
-                    <img src={img.url} alt={img.altText || `${product.title} ${i + 1}`} className="w-full h-full object-cover" />
+                    <img
+                      src={img.url}
+                      alt={img.altText || `${product.title} ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
                   </button>
                 ))}
               </div>
@@ -259,11 +259,15 @@ const ProductDetail = () => {
               {product.tags?.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {product.tags.slice(0, 3).map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-xs rounded-pill">{tag}</Badge>
+                    <Badge key={tag} variant="secondary" className="text-xs rounded-pill">
+                      {tag}
+                    </Badge>
                   ))}
                 </div>
               )}
-              <h1 className="text-2xl sm:text-3xl font-bold text-heading leading-tight">{product.title}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-heading leading-tight">
+                {product.title}
+              </h1>
             </div>
 
             {/* Rating */}
@@ -279,16 +283,20 @@ const ProductDetail = () => {
               <span className="text-3xl font-bold text-heading">₹{price.toFixed(0)}</span>
               {isOnSale && compareAt && (
                 <>
-                  <span className="text-lg text-muted-foreground line-through">₹{compareAt.toFixed(0)}</span>
-                  <span className="text-sm font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-pill">Save {discount}%</span>
+                  <span className="text-lg text-muted-foreground line-through">
+                    ₹{compareAt.toFixed(0)}
+                  </span>
+                  <span className="text-sm font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-pill">
+                    Save {discount}%
+                  </span>
                 </>
               )}
             </div>
 
-            {/* Delivery */}
+            {/* Delivery estimation */}
             {available && (
               <div className="flex items-center gap-2.5 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                <span className="text-green-600 text-base">🚚</span>
+                <Truck className="w-4 h-4 text-green-600 flex-shrink-0" />
                 <div className="text-sm">
                   <span className="text-green-800 font-semibold">Estimated delivery: </span>
                   <span className="text-green-700 font-medium">{deliveryRange}</span>
@@ -296,41 +304,47 @@ const ProductDetail = () => {
               </div>
             )}
 
-            {/* Stock */}
+            {/* Stock status */}
             <div>
               {available ? (
                 <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600">
-                  <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />In Stock
+                  <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                  In Stock
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive">
-                  <span className="w-2 h-2 rounded-full bg-destructive inline-block" />Out of Stock
+                  <span className="w-2 h-2 rounded-full bg-destructive inline-block" />
+                  Out of Stock
                 </span>
               )}
             </div>
 
-            {/* Variants */}
+            {/* Variant Options */}
             {product.options
               ?.filter((opt) => !(opt.values.length === 1 && opt.values[0] === 'Default Title'))
               .map((option) => (
                 <div key={option.name}>
                   <p className="text-sm font-semibold text-heading mb-2">
-                    {option.name}: <span className="font-normal text-body">{selectedOptions[option.name]}</span>
+                    {option.name}:{' '}
+                    <span className="font-normal text-body">{selectedOptions[option.name]}</span>
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {option.values.map((val) => (
-                      <button
-                        key={val}
-                        onClick={() => handleOptionSelect(option.name, val)}
-                        className={`px-4 py-2 rounded-pill text-sm font-medium border transition-all duration-200 ${
-                          selectedOptions[option.name] === val
-                            ? 'bg-primary text-primary-foreground border-primary shadow-hover'
-                            : 'bg-white text-body border-border hover:border-primary hover:text-primary'
-                        }`}
-                      >
-                        {val}
-                      </button>
-                    ))}
+                    {option.values.map((val) => {
+                      const isActive = selectedOptions[option.name] === val;
+                      return (
+                        <button
+                          key={val}
+                          onClick={() => handleOptionSelect(option.name, val)}
+                          className={`px-4 py-2 rounded-pill text-sm font-medium border transition-all duration-200 ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground border-primary shadow-hover'
+                              : 'bg-white text-body border-border hover:border-primary hover:text-primary'
+                          }`}
+                        >
+                          {val}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -340,42 +354,73 @@ const ProductDetail = () => {
               <div>
                 <p className="text-sm font-semibold text-heading mb-2">Quantity</p>
                 <div className="inline-flex items-center border border-border rounded-pill overflow-hidden">
-                  <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="px-4 py-2.5 hover:bg-blue-soft transition-colors text-heading" disabled={quantity <= 1}>
+                  <button
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="px-4 py-2.5 hover:bg-blue-soft transition-colors text-heading"
+                    disabled={quantity <= 1}
+                  >
                     <Minus className="w-4 h-4" />
                   </button>
-                  <span className="px-5 py-2.5 text-sm font-semibold text-heading min-w-[3rem] text-center border-x border-border">{quantity}</span>
-                  <button onClick={() => setQuantity((q) => q + 1)} className="px-4 py-2.5 hover:bg-blue-soft transition-colors text-heading">
+                  <span className="px-5 py-2.5 text-sm font-semibold text-heading min-w-[3rem] text-center border-x border-border">
+                    {quantity}
+                  </span>
+                  <button
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="px-4 py-2.5 hover:bg-blue-soft transition-colors text-heading"
+                  >
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Buttons */}
+            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               {available ? (
                 <>
-                  <Button onClick={handleBuyNow} disabled={buyNowLoading} className="flex-1 rounded-pill bg-primary text-primary-foreground font-semibold py-3 h-auto hover:bg-primary/90 transition-all shadow-hover">
+                  <Button
+                    onClick={handleBuyNow}
+                    disabled={buyNowLoading}
+                    className="flex-1 rounded-pill bg-primary text-primary-foreground font-semibold py-3 h-auto hover:bg-primary/90 transition-all shadow-hover"
+                  >
                     {buyNowLoading ? (
                       <span className="flex items-center gap-2">
-                        <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Processing...
+                        <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        Processing...
                       </span>
                     ) : (
-                      <span className="flex items-center gap-2"><Zap className="w-4 h-4" />Buy Now</span>
+                      <span className="flex items-center gap-2">
+                        <Zap className="w-4 h-4" />
+                        Buy Now
+                      </span>
                     )}
                   </Button>
-                  <Button variant="outline" onClick={handleAddToCart} disabled={addToCartLoading} className="flex-1 rounded-pill border-primary text-primary font-semibold py-3 h-auto hover:bg-primary hover:text-primary-foreground transition-all">
+                  <Button
+                    variant="outline"
+                    onClick={handleAddToCart}
+                    disabled={addToCartLoading}
+                    className="flex-1 rounded-pill border-primary text-primary font-semibold py-3 h-auto hover:bg-primary hover:text-primary-foreground transition-all"
+                  >
                     {addToCartLoading ? (
                       <span className="flex items-center gap-2">
-                        <span className="w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />Adding...
+                        <span className="w-4 h-4 border-2 border-primary/40 border-t-primary rounded-full animate-spin" />
+                        Adding...
                       </span>
                     ) : (
-                      <span className="flex items-center gap-2"><ShoppingCart className="w-4 h-4" />Add to Cart</span>
+                      <span className="flex items-center gap-2">
+                        <ShoppingCart className="w-4 h-4" />
+                        Add to Cart
+                      </span>
                     )}
                   </Button>
                 </>
               ) : (
-                <Button disabled className="flex-1 rounded-pill bg-muted text-muted-foreground font-semibold py-3 h-auto cursor-not-allowed">Out of Stock</Button>
+                <Button
+                  disabled
+                  className="flex-1 rounded-pill bg-muted text-muted-foreground font-semibold py-3 h-auto cursor-not-allowed"
+                >
+                  Out of Stock
+                </Button>
               )}
             </div>
 
@@ -383,7 +428,9 @@ const ProductDetail = () => {
             {product.description && (
               <div className="pt-4 border-t border-border">
                 <h3 className="text-sm font-semibold text-heading mb-3">Description</h3>
-                <p className="text-sm text-body leading-relaxed whitespace-pre-line">{product.description}</p>
+                <p className="text-sm text-body leading-relaxed whitespace-pre-line">
+                  {product.description}
+                </p>
               </div>
             )}
 
@@ -394,14 +441,17 @@ const ProductDetail = () => {
                 { icon: '🚚', label: 'Fast Shipping' },
                 { icon: '↩️', label: 'Easy Returns' },
               ].map((b) => (
-                <div key={b.label} className="flex flex-col items-center gap-1 p-3 rounded-card bg-blue-soft text-center">
+                <div
+                  key={b.label}
+                  className="flex flex-col items-center gap-1 p-3 rounded-card bg-blue-soft text-center"
+                >
                   <span className="text-lg">{b.icon}</span>
                   <span className="text-xs font-medium text-body">{b.label}</span>
                 </div>
               ))}
             </div>
 
-            {/* ── Reviews ── */}
+            {/* Reviews */}
             <ReviewSection
               productHandle={product.handle}
               productTitle={product.title}
