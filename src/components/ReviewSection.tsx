@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Star } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Star, ImagePlus, X, Loader2 } from 'lucide-react';
 import { supabase, type Review } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -32,6 +32,10 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [images, setImages] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchReviews();
@@ -55,6 +59,59 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
     }
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (images.length + files.length > 3) {
+      toast.error('Maximum 3 images allowed.');
+      return;
+    }
+    const validFiles = files.filter(f => {
+      if (f.size > 5 * 1024 * 1024) {
+        toast.error(`${f.name} is too large. Max 5MB per image.`);
+        return false;
+      }
+      if (!f.type.startsWith('image/')) {
+        toast.error(`${f.name} is not an image.`);
+        return false;
+      }
+      return true;
+    });
+    setImages(prev => [...prev, ...validFiles]);
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        setPreviews(prev => [...prev, e.target?.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setImages(prev => prev.filter((_, i) => i !== index));
+    setPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadImages = async (): Promise<string[]> => {
+    if (images.length === 0) return [];
+    setUploading(true);
+    const urls: string[] = [];
+    try {
+      for (const file of images) {
+        const ext = file.name.split('.').pop();
+        const path = `${productHandle}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error } = await supabase.storage
+          .from('review-images')
+          .upload(path, file, { cacheControl: '3600', upsert: false });
+        if (error) throw error;
+        const { data } = supabase.storage.from('review-images').getPublicUrl(path);
+        urls.push(data.publicUrl);
+      }
+    } finally {
+      setUploading(false);
+    }
+    return urls;
+  };
+
   const handleSubmit = async () => {
     if (!name.trim()) { toast.error('Please enter your name.'); return; }
     if (!rating) { toast.error('Please select a rating.'); return; }
@@ -62,6 +119,7 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
 
     setSubmitting(true);
     try {
+      const imageUrls = await uploadImages();
       const { error } = await supabase.from('reviews').insert({
         product_handle: productHandle,
         product_title: productTitle,
@@ -69,11 +127,13 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
         rating,
         comment: comment.trim(),
         is_approved: false,
+        image_urls: imageUrls,
       });
       if (error) throw error;
       setSubmitted(true);
       setShowForm(false);
       setName(''); setRating(0); setComment('');
+      setImages([]); setPreviews([]);
       toast.success('Review submitted! It will appear after approval.');
     } catch (err) {
       console.error('Submit error:', err);
@@ -101,7 +161,7 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
           <h3 className="text-lg font-bold text-heading">Customer Reviews</h3>
           {reviews.length > 0 && (
             <div className="flex items-center gap-2 mt-1">
-              <StarRow rating={Math.round(avgRating)} size="sm" />
+              <StarRow rating={Math.round(avgRating)} />
               <span className="text-sm font-semibold text-heading">{avgRating.toFixed(1)}</span>
               <span className="text-sm text-muted-foreground">
                 ({reviews.length} {reviews.length === 1 ? 'review' : 'reviews'})
@@ -125,7 +185,9 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
           <div className="flex items-center gap-8">
             <div className="text-center flex-shrink-0">
               <div className="text-5xl font-bold text-heading">{avgRating.toFixed(1)}</div>
-              <div className="mt-1"><StarRow rating={Math.round(avgRating)} size="sm" /></div>
+              <div className="mt-1 flex justify-center">
+                <StarRow rating={Math.round(avgRating)} />
+              </div>
               <div className="text-xs text-muted-foreground mt-1.5">
                 {reviews.length} {reviews.length === 1 ? 'review' : 'reviews'}
               </div>
@@ -165,6 +227,7 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
         <div className="bg-blue-soft border border-border rounded-2xl p-5 mb-6">
           <p className="text-sm font-bold text-heading mb-5">Write your review</p>
 
+          {/* Star picker */}
           <div className="mb-5">
             <p className="text-xs font-medium text-muted-foreground mb-2">Your rating</p>
             <div className="flex items-center gap-1.5">
@@ -193,6 +256,7 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
             </div>
           </div>
 
+          {/* Name */}
           <div className="mb-4">
             <p className="text-xs font-medium text-muted-foreground mb-1.5">Your name</p>
             <input
@@ -204,6 +268,7 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
             />
           </div>
 
+          {/* Comment */}
           <div className="mb-5">
             <p className="text-xs font-medium text-muted-foreground mb-1.5">Your review</p>
             <textarea
@@ -215,15 +280,53 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
             />
           </div>
 
+          {/* Image upload */}
+          <div className="mb-5">
+            <p className="text-xs font-medium text-muted-foreground mb-2">
+              Add photos <span className="text-muted-foreground font-normal">(optional, max 3)</span>
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {previews.map((src, i) => (
+                <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border flex-shrink-0">
+                  <img src={src} alt="" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => removeImage(i)}
+                    className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center"
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                </div>
+              ))}
+              {images.length < 3 && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-20 h-20 rounded-xl border-2 border-dashed border-border bg-white flex flex-col items-center justify-center gap-1 hover:border-primary hover:bg-primary/5 transition-all flex-shrink-0"
+                >
+                  <ImagePlus className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Add</span>
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleImageSelect}
+            />
+            <p className="text-xs text-muted-foreground mt-2">Max 5MB per image. JPG, PNG, WEBP.</p>
+          </div>
+
           <button
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || uploading}
             className="px-6 py-2.5 rounded-full bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {submitting ? (
+            {submitting || uploading ? (
               <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                Submitting...
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {uploading ? 'Uploading images...' : 'Submitting...'}
               </span>
             ) : 'Submit Review'}
           </button>
@@ -260,7 +363,7 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-heading">{r.reviewer_name}</p>
-                    <StarRow rating={r.rating} size="sm" />
+                    <StarRow rating={r.rating} />
                   </div>
                 </div>
                 <span className="text-xs text-muted-foreground flex-shrink-0">
@@ -270,6 +373,19 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
                 </span>
               </div>
               <p className="text-sm text-body mt-3 leading-relaxed">{r.comment}</p>
+              {r.image_urls && r.image_urls.length > 0 && (
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  {r.image_urls.map((url: string, i: number) => (
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={url}
+                        alt={`Review image ${i + 1}`}
+                        className="w-20 h-20 rounded-xl object-cover border border-border hover:opacity-90 transition-opacity"
+                      />
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
