@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import CartDrawer from './CartDrawer';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { useCartStore } from '@/stores/cartStore';
+import { useCurrencyContext } from '@/context/CurrencyContext';
 import logo from '@/assets/logo.jpg';
 
 const navLinks = [
@@ -22,6 +23,7 @@ export const Navbar = () => {
 
   const getItemCount = useCartStore((state) => state.getItemCount);
   const itemCount = getItemCount();
+  const { currencyCode } = useCurrencyContext();
 
   return (
     <>
@@ -56,6 +58,11 @@ export const Navbar = () => {
             <Button variant="ghost" size="icon" className="hidden md:flex">
               <User className="h-5 w-5" />
             </Button>
+
+            {/* Currency indicator */}
+            <span className="text-xs text-muted-foreground font-medium px-1.5 hidden sm:inline">
+              {currencyCode}
+            </span>
 
             {/* Cart Button with badge */}
             <Button
