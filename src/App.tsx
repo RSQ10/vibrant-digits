@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { useCartSync } from "@/hooks/useCartSync";
+import { CurrencyProvider } from "./context/CurrencyContext";
 
 import Index from "./pages/Index";
 import Shop from "./pages/Shop";
@@ -43,13 +44,15 @@ function AppContent() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <TooltipProvider>
-          <AppContent />
-          <Toaster />
-          <Sonner />
-        </TooltipProvider>
-      </BrowserRouter>
+      <CurrencyProvider>
+        <BrowserRouter>
+          <TooltipProvider>
+            <AppContent />
+            <Toaster />
+            <Sonner />
+          </TooltipProvider>
+        </BrowserRouter>
+      </CurrencyProvider>
     </QueryClientProvider>
   );
 }

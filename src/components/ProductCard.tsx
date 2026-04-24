@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useCartStore, OUT_OF_STOCK } from '@/stores/cartStore';
 import type { ShopifyProduct } from '@/lib/shopify';
 import { toast } from 'sonner';
+import { useCurrencyContext } from '@/context/CurrencyContext';
 
 interface ProductCardProps {
   product: ShopifyProduct;
@@ -14,6 +15,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
   const { node } = product;
   const addItem = useCartStore(state => state.addItem);
   const isLoading = useCartStore(state => state.isLoading);
+  const { currencySymbol, convertPrice } = useCurrencyContext();
   const [added, setAdded] = useState(false);
   const [hovered, setHovered] = useState(false);
 
@@ -89,9 +91,9 @@ export const ProductCard = ({ product }: ProductCardProps) => {
       <h3 className="text-sm font-semibold text-heading mb-1 truncate">{node.title}</h3>
       <div className="flex items-center gap-2 mb-3">
         {isOnSale && compareAt && (
-          <span className="text-sm text-muted-foreground line-through">₹{compareAt.toFixed(0)}</span>
+          <span className="text-sm text-muted-foreground line-through">{currencySymbol}{convertPrice(compareAt)}</span>
         )}
-        <span className="text-sm font-bold text-heading">₹{price.toFixed(0)}</span>
+        <span className="text-sm font-bold text-heading">{currencySymbol}{convertPrice(price)}</span>
         {isOnSale && (
           <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-pill">{discount}% OFF</span>
         )}

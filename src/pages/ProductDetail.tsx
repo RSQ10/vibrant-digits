@@ -8,6 +8,7 @@ import { storefrontApiRequest, PRODUCT_BY_HANDLE_QUERY, type ShopifyProduct } fr
 import { useCartStore, OUT_OF_STOCK } from '@/stores/cartStore';
 import { toast } from 'sonner';
 import { ReviewSection } from '@/components/ReviewSection';
+import { useCurrencyContext } from '@/context/CurrencyContext';
 
 // ─── Delivery Estimation ──────────────────────────────────────────────────────
 function getDeliveryRange(): string {
@@ -61,6 +62,7 @@ const ProductDetail = () => {
   const [addToCartLoading, setAddToCartLoading] = useState(false);
 
   const addItem = useCartStore((state) => state.addItem);
+  const { currencySymbol, convertPrice } = useCurrencyContext();
   const deliveryRange = getDeliveryRange();
 
   useEffect(() => {
@@ -280,11 +282,11 @@ const ProductDetail = () => {
 
             {/* Price */}
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-bold text-heading">₹{price.toFixed(0)}</span>
+              <span className="text-3xl font-bold text-heading">{currencySymbol}{convertPrice(price)}</span>
               {isOnSale && compareAt && (
                 <>
                   <span className="text-lg text-muted-foreground line-through">
-                    ₹{compareAt.toFixed(0)}
+                    {currencySymbol}{convertPrice(compareAt)}
                   </span>
                   <span className="text-sm font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-pill">
                     Save {discount}%
