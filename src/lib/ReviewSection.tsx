@@ -45,10 +45,11 @@ export const ReviewSection = ({ productHandle, productTitle }: Props) => {
         .eq('is_approved', true)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) throw new Error('Failed to fetch');
       setReviews(data || []);
-    } catch (err) {
-      console.error('Failed to fetch reviews:', err);
+    } catch (error) {
+      // Silently fail - keep existing static/default reviews showing
+      console.log('Reviews fetch failed silently');
     } finally {
       setLoading(false);
     }
