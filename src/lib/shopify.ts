@@ -1,7 +1,7 @@
 import { toast } from "sonner";
 
-const DOMAIN = "jk0yez-6r.myshopify.com"
-const TOKEN = "c12677814d108cc0d536f2b653ce71b0"
+const DOMAIN = "gadget-shop-9908.myshopify.com"
+const TOKEN = "8231c1471c1a83020e70349c567d217f"
 const ENDPOINT = `https://${DOMAIN}/api/2024-01/graphql.json`
 const HEADERS = {
   "Content-Type": "application/json",
