@@ -23,7 +23,10 @@ export default function CurrencyPopup() {
     const alreadyShown = localStorage.getItem('currency_popup_shown');
     const savedCurrency = localStorage.getItem('currency');
 
-    if (alreadyShown || savedCurrency) return;
+    console.log('Popup Debug:', { alreadyShown, savedCurrency });
+
+    // Only block if BOTH exist
+    if (alreadyShown && savedCurrency) return;
 
     detectUser();
   }, []);
@@ -33,16 +36,19 @@ export default function CurrencyPopup() {
       const res = await fetch('https://ipapi.co/json/');
       const data = await res.json();
 
-      const countryCode = data.country;
+      console.log('IP Data:', data);
+
+      const countryCode = data.country || 'US';
       const currency = COUNTRY_TO_CURRENCY[countryCode] || 'USD';
 
+      setCountry(countryCode);
+      setDetectedCurrency(currency);
+
       if (currency !== 'USD') {
-        setDetectedCurrency(currency);
-        setCountry(countryCode);
         setShow(true);
       }
     } catch (err) {
-      console.error('Popup detection failed');
+      console.error('Popup detection failed:', err);
     }
   };
 
@@ -53,7 +59,7 @@ export default function CurrencyPopup() {
   };
 
   const handleNo = () => {
-    localStorage.setItem('currency', 'USD');
+    setCurrency('USD');
     localStorage.setItem('currency_popup_shown', 'true');
     setShow(false);
   };
