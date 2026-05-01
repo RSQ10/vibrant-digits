@@ -1,12 +1,12 @@
 import { toast } from "sonner";
 
-const DOMAIN = "gadget-shop-9908.myshopify.com"
-const TOKEN = "8231c1471c1a83020e70349c567d217f"
-const ENDPOINT = `https://${DOMAIN}/api/2024-01/graphql.json`
+const DOMAIN = import.meta.env.VITE_SHOPIFY_STORE_DOMAIN || "gadget-shop-9908.myshopify.com";
+const TOKEN = import.meta.env.VITE_SHOPIFY_STOREFRONT_TOKEN || "8231c1471c1a83020e70349c567d217f";
+const ENDPOINT = `https://${DOMAIN}/api/2024-01/graphql.json`;
 const HEADERS = {
   "Content-Type": "application/json",
   "X-Shopify-Storefront-Access-Token": TOKEN,
-}
+};
 
 export interface ShopifyProduct {
   node: {
@@ -15,6 +15,8 @@ export interface ShopifyProduct {
     description: string;
     handle: string;
     tags: string[];
+    // FIX: added product-level availableForSale as a reliable fallback
+    availableForSale: boolean;
     compareAtPriceRange?: {
       minVariantPrice: { amount: string; currencyCode: string };
     };
@@ -32,6 +34,7 @@ export interface ShopifyProduct {
           price: { amount: string; currencyCode: string };
           compareAtPrice?: { amount: string; currencyCode: string } | null;
           availableForSale: boolean;
+          quantityAvailable?: number | null;
           selectedOptions: Array<{ name: string; value: string }>;
         };
       }>;
@@ -50,9 +53,12 @@ export interface ShopifyCollection {
   };
 }
 
-export async function storefrontApiRequest(query: string, variables: Record<string, unknown> = {}) {
+export async function storefrontApiRequest(
+  query: string,
+  variables: Record<string, unknown> = {}
+) {
   const response = await fetch(ENDPOINT, {
-    method: 'POST',
+    method: "POST",
     headers: HEADERS,
     body: JSON.stringify({ query, variables }),
   });
@@ -73,7 +79,10 @@ export async function storefrontApiRequest(query: string, variables: Record<stri
   return data;
 }
 
-export async function shopifyFetch(query: string, variables: Record<string, unknown> = {}) {
+export async function shopifyFetch(
+  query: string,
+  variables: Record<string, unknown> = {}
+) {
   const json = await storefrontApiRequest(query, variables);
   return json?.data;
 }
@@ -86,7 +95,7 @@ export async function createCheckout(
 ): Promise<string | null> {
   const merchandiseId = variantId.includes("gid://")
     ? variantId
-    : `gid://shopify/ProductVariant/${variantId}`
+    : `gid://shopify/ProductVariant/${variantId}`;
 
   const res = await fetch(ENDPOINT, {
     method: "POST",
@@ -102,32 +111,34 @@ export async function createCheckout(
       `,
       variables: {
         input: {
-          lines: [{ quantity, merchandiseId }]
-        }
-      }
-    })
-  })
+          lines: [{ quantity, merchandiseId }],
+        },
+      },
+    }),
+  });
 
-  const json = await res.json()
-  const errors = json?.data?.cartCreate?.userErrors
-  const url = json?.data?.cartCreate?.cart?.checkoutUrl
+  const json = await res.json();
+  const errors = json?.data?.cartCreate?.userErrors;
+  const url = json?.data?.cartCreate?.cart?.checkoutUrl;
 
   if (errors && errors.length > 0) {
-    console.error("Cart errors:", errors)
-    return null
+    console.error("Cart errors:", errors);
+    return null;
   }
-  return url || null
+  // FIX: Return the URL as-is — do NOT rewrite to myshopify.com domain
+  // which was causing redirect to the default Shopify theme checkout
+  return url || null;
 }
 
 export async function createCartWithItems(
   lines: Array<{ variantId: string; quantity: number }>
 ): Promise<string | null> {
-  const formattedLines = lines.map(line => ({
+  const formattedLines = lines.map((line) => ({
     quantity: line.quantity,
     merchandiseId: line.variantId.includes("gid://")
       ? line.variantId
-      : `gid://shopify/ProductVariant/${line.variantId}`
-  }))
+      : `gid://shopify/ProductVariant/${line.variantId}`,
+  }));
 
   const res = await fetch(ENDPOINT, {
     method: "POST",
@@ -142,38 +153,53 @@ export async function createCartWithItems(
         }
       `,
       variables: {
-        input: { lines: formattedLines }
-      }
-    })
-  })
+        input: { lines: formattedLines },
+      },
+    }),
+  });
 
-  const json = await res.json()
-  return json?.data?.cartCreate?.cart?.checkoutUrl || null
+  const json = await res.json();
+  // FIX: Return URL as-is, no domain rewriting
+  return json?.data?.cartCreate?.cart?.checkoutUrl || null;
 }
 
 // ── Queries ──
+// FIX: All queries now include:
+//   - availableForSale at the product (node) level
+//   - quantityAvailable at the variant level
+// This ensures "sold out" is never shown when inventory exists.
+
+const VARIANT_FIELDS = `
+  id title
+  price { amount currencyCode }
+  compareAtPrice { amount currencyCode }
+  availableForSale
+  quantityAvailable
+  selectedOptions { name value }
+`;
+
+const PRODUCT_FIELDS = `
+  id title description handle tags
+  availableForSale
+  priceRange { minVariantPrice { amount currencyCode } }
+  compareAtPriceRange { minVariantPrice { amount currencyCode } }
+  images(first: 5) { edges { node { url altText } } }
+  variants(first: 10) {
+    edges {
+      node {
+        ${VARIANT_FIELDS}
+      }
+    }
+  }
+  options { name values }
+`;
 
 export const PRODUCTS_QUERY = `
   query GetProducts($first: Int!, $query: String) {
     products(first: $first, query: $query) {
       edges {
         node {
-          id title description handle tags
-          priceRange { minVariantPrice { amount currencyCode } }
-          compareAtPriceRange { minVariantPrice { amount currencyCode } }
-          images(first: 5) { edges { node { url altText } } }
-          variants(first: 10) {
-            edges {
-              node {
-                id title
-                price { amount currencyCode }
-                compareAtPrice { amount currencyCode }
-                availableForSale
-                selectedOptions { name value }
-              }
-            }
-          }
-          options { name values }
+          ${PRODUCT_FIELDS}
         }
       }
     }
@@ -184,17 +210,14 @@ export const PRODUCT_BY_HANDLE_QUERY = `
   query GetProductByHandle($handle: String!) {
     productByHandle(handle: $handle) {
       id title description handle tags
+      availableForSale
       priceRange { minVariantPrice { amount currencyCode } }
       compareAtPriceRange { minVariantPrice { amount currencyCode } }
       images(first: 10) { edges { node { url altText } } }
       variants(first: 20) {
         edges {
           node {
-            id title
-            price { amount currencyCode }
-            compareAtPrice { amount currencyCode }
-            availableForSale
-            selectedOptions { name value }
+            ${VARIANT_FIELDS}
           }
         }
       }
@@ -223,22 +246,7 @@ export const COLLECTION_PRODUCTS_QUERY = `
       products(first: $first) {
         edges {
           node {
-            id title description handle tags
-            priceRange { minVariantPrice { amount currencyCode } }
-            compareAtPriceRange { minVariantPrice { amount currencyCode } }
-            images(first: 5) { edges { node { url altText } } }
-            variants(first: 10) {
-              edges {
-                node {
-                  id title
-                  price { amount currencyCode }
-                  compareAtPrice { amount currencyCode }
-                  availableForSale
-                  selectedOptions { name value }
-                }
-              }
-            }
-            options { name values }
+            ${PRODUCT_FIELDS}
           }
         }
       }
@@ -251,22 +259,7 @@ export const NEWEST_PRODUCTS_QUERY = `
     products(first: $first, sortKey: CREATED_AT, reverse: true) {
       edges {
         node {
-          id title description handle tags
-          priceRange { minVariantPrice { amount currencyCode } }
-          compareAtPriceRange { minVariantPrice { amount currencyCode } }
-          images(first: 5) { edges { node { url altText } } }
-          variants(first: 10) {
-            edges {
-              node {
-                id title
-                price { amount currencyCode }
-                compareAtPrice { amount currencyCode }
-                availableForSale
-                selectedOptions { name value }
-              }
-            }
-          }
-          options { name values }
+          ${PRODUCT_FIELDS}
         }
       }
     }
