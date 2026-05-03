@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/stores/cartStore';
 import { toast } from 'sonner';
+import { useCurrencyContext } from '@/context/CurrencyContext';
 
 interface CartDrawerProps {
   open: boolean;
@@ -18,6 +19,7 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
   const getItemCount = useCartStore((state) => state.getItemCount);
 
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const { currencySymbol, convertPrice } = useCurrencyContext();
 
   const handleCheckout = async () => {
     if (!checkoutUrl) {
@@ -142,7 +144,7 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
 
                       <div className="flex items-center gap-3">
                         <span className="text-sm font-bold text-heading">
-                          ₹{itemTotal.toFixed(0)}
+                          {currencySymbol}{convertPrice(itemTotal)}
                         </span>
                         <button
                           onClick={() => {
@@ -168,7 +170,7 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
             {/* Subtotal */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Subtotal</span>
-              <span className="text-lg font-bold text-heading">₹{total.toFixed(0)}</span>
+              <span className="text-lg font-bold text-heading">{currencySymbol}{convertPrice(total)}</span>
             </div>
             <p className="text-xs text-muted-foreground -mt-2">
               Shipping & taxes calculated at checkout
