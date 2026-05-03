@@ -2,9 +2,9 @@ import { Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const testimonials = [
-  { name: 'Priya Sharma', quote: 'Absolutely love the quality! Fast delivery and beautiful packaging. Will definitely order again.', avatar: '👩' },
-  { name: 'Rahul Verma', quote: 'Best gadgets store I\'ve found online. The products are exactly as described. Highly recommended!', avatar: '👨' },
-  { name: 'Anjali Patel', quote: 'Great customer service and amazing products. The returns process was hassle-free too!', avatar: '👩‍💼' },
+  { name: 'Sarah M.', location: 'New York, US', quote: 'Absolutely love the quality! Fast delivery and beautiful packaging. Will definitely order again.', avatar: '👩' },
+  { name: 'James T.', location: 'London, UK', quote: 'Best gadgets store I\'ve found online. The products are exactly as described. Highly recommended!', avatar: '👨' },
+  { name: 'Emily R.', location: 'California, US', quote: 'Great customer service and amazing products. The returns process was super easy!', avatar: '👩‍💼' },
 ];
 
 export const Testimonials = () => (
@@ -34,7 +34,10 @@ export const Testimonials = () => (
             <p className="text-body text-sm mb-4 italic">"{t.quote}"</p>
             <div className="flex items-center gap-3">
               <span className="text-2xl">{t.avatar}</span>
-              <span className="text-sm font-semibold text-heading">{t.name}</span>
+              <div>
+                <span className="text-sm font-semibold text-heading">{t.name}</span>
+                <p className="text-xs text-muted-foreground">{t.location}</p>
+              </div>
             </div>
           </motion.div>
         ))}
