@@ -4,7 +4,7 @@ interface CurrencyContextType {
   currencyCode: string;
   currencySymbol: string;
   exchangeRate: number;
-  convertPrice: (priceInINR: number) => string;
+  convertPrice: (priceInUSD: number) => string;
   setCurrency: (code: string) => void;
   isLoading: boolean;
 }
@@ -19,26 +19,28 @@ const CurrencyContext = createContext<CurrencyContextType>({
 });
 
 const CURRENCY_DATA: Record<string, { symbol: string }> = {
-  INR: { symbol: '₹' },
   USD: { symbol: '$' },
   GBP: { symbol: '£' },
-  AED: { symbol: 'AED ' },
+  EUR: { symbol: '€' },
   AUD: { symbol: 'A$' },
   CAD: { symbol: 'CA$' },
   SGD: { symbol: 'S$' },
-  EUR: { symbol: '€' },
+  AED: { symbol: 'AED ' },
 };
 
+// India (IN) intentionally excluded — store sells to Western markets only
 const COUNTRY_TO_CURRENCY: Record<string, string> = {
-  IN: 'INR',
   US: 'USD',
   GB: 'GBP',
-  AE: 'AED',
+  DE: 'EUR',
+  FR: 'EUR',
+  IT: 'EUR',
+  ES: 'EUR',
+  NL: 'EUR',
   AU: 'AUD',
   CA: 'CAD',
   SG: 'SGD',
-  DE: 'EUR',
-  FR: 'EUR',
+  AE: 'AED',
 };
 
 export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
@@ -54,27 +56,17 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   const initializeCurrency = async () => {
     try {
       setIsLoading(true);
-
-      const savedCurrency = localStorage.getItem('currency');
-
-      // ✅ Step 1: If user already selected currency → use it
-      if (savedCurrency) {
+      const savedCurrency = localStorage.getItem('preferred_currency');
+      if (savedCurrency && CURRENCY_DATA[savedCurrency]) {
         await updateCurrency(savedCurrency);
         return;
       }
-
-      // ✅ Step 2: Detect user country via IP
       try {
         const res = await fetch('https://ipapi.co/json/');
         const data = await res.json();
-
-        const countryCode = data.country;
-        const detectedCurrency =
-          COUNTRY_TO_CURRENCY[countryCode] || 'USD';
-
+        const detectedCurrency = COUNTRY_TO_CURRENCY[data.country] || 'USD';
         await updateCurrency(detectedCurrency);
-      } catch (err) {
-        // fallback if API fails
+      } catch {
         await updateCurrency('USD');
       }
     } finally {
@@ -83,48 +75,34 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateCurrency = async (code: string) => {
+    const safeCode = CURRENCY_DATA[code] ? code : 'USD';
     try {
-      const symbol = CURRENCY_DATA[code]?.symbol || '$';
-
-      setCurrencyCode(code);
+      const symbol = CURRENCY_DATA[safeCode]?.symbol || '$';
+      setCurrencyCode(safeCode);
       setCurrencySymbol(symbol);
-      localStorage.setItem('currency', code);
-
-      if (code === 'INR') {
+      localStorage.setItem('preferred_currency', safeCode);
+      if (safeCode === 'USD') {
         setExchangeRate(1);
       } else {
-        const res = await fetch(
-          'https://api.exchangerate-api.com/v4/latest/INR'
-        );
+        const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
         const data = await res.json();
-        setExchangeRate(data.rates[code] || 1);
+        setExchangeRate(data.rates[safeCode] || 1);
       }
     } catch (err) {
-      console.error('Currency error:', err);
+      console.error('Currency update error:', err);
       setCurrencyCode('USD');
       setCurrencySymbol('$');
       setExchangeRate(1);
     }
   };
 
-  const convertPrice = (priceInINR: number): string => {
-    const converted = priceInINR * exchangeRate;
-    return currencyCode === 'INR'
-      ? converted.toFixed(0)
-      : converted.toFixed(2);
+  const convertPrice = (priceInUSD: number): string => {
+    const converted = priceInUSD * exchangeRate;
+    return converted.toFixed(2);
   };
 
   return (
-    <CurrencyContext.Provider
-      value={{
-        currencyCode,
-        currencySymbol,
-        exchangeRate,
-        convertPrice,
-        setCurrency: updateCurrency,
-        isLoading,
-      }}
-    >
+    <CurrencyContext.Provider value={{ currencyCode, currencySymbol, exchangeRate, convertPrice, setCurrency: updateCurrency, isLoading }}>
       {children}
     </CurrencyContext.Provider>
   );
