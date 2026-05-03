@@ -1,10 +1,10 @@
 import { Lock, Zap, Truck, RotateCcw } from 'lucide-react';
 
 const items = [
-  { icon: Lock, title: 'Secure Checkout', desc: 'UPI, Cards, Netbanking' },
+  { icon: Lock, title: 'Secure Checkout', desc: 'Visa · Mastercard · PayPal' },
   { icon: Zap, title: 'Fast Dispatch', desc: 'Within 24 hours' },
-  { icon: Truck, title: 'Pan-India Delivery', desc: '3–5 days across India' },
-  { icon: RotateCcw, title: 'Easy Returns', desc: '7-day hassle-free' },
+  { icon: Truck, title: 'US & UK Delivery', desc: '3–7 business days' },
+  { icon: RotateCcw, title: 'Easy Returns', desc: '30-day hassle-free' },
 ];
 
 export const TrustStrip = () => (
