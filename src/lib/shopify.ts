@@ -80,6 +80,32 @@ export async function shopifyFetch(query: string, variables: Record<string, unkn
 
 // ── Checkout helpers ──
 
+// Forced INR: cart is always created with IN buyer identity so Shopify checkout shows INR
+async function applyINRBuyerIdentity(cartId: string) {
+  try {
+    await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: HEADERS,
+      body: JSON.stringify({
+        query: `
+          mutation cartBuyerIdentityUpdate($cartId: ID!, $buyerIdentity: CartBuyerIdentityInput!) {
+            cartBuyerIdentityUpdate(cartId: $cartId, buyerIdentity: $buyerIdentity) {
+              cart { id checkoutUrl }
+              userErrors { field message }
+            }
+          }
+        `,
+        variables: {
+          cartId,
+          buyerIdentity: { countryCode: 'IN' },
+        },
+      }),
+    });
+  } catch (err) {
+    console.error('Shopify INR buyer identity update failed:', err);
+  }
+}
+
 export async function createCheckout(
   variantId: string,
   quantity: number = 1
@@ -102,7 +128,8 @@ export async function createCheckout(
       `,
       variables: {
         input: {
-          lines: [{ quantity, merchandiseId }]
+          lines: [{ quantity, merchandiseId }],
+          buyerIdentity: { countryCode: 'IN' },
         }
       }
     })
@@ -110,14 +137,17 @@ export async function createCheckout(
 
   const json = await res.json()
   const errors = json?.data?.cartCreate?.userErrors
-  const url = json?.data?.cartCreate?.cart?.checkoutUrl
   const cartId = json?.data?.cartCreate?.cart?.id
+  const url = json?.data?.cartCreate?.cart?.checkoutUrl
 
   if (errors && errors.length > 0) {
     console.error("Cart errors:", errors)
     return null
   }
-  if (cartId) localStorage.setItem('shopify_cart_id', cartId)
+  if (cartId) {
+    localStorage.setItem('shopify_cart_id', cartId)
+    await applyINRBuyerIdentity(cartId)
+  }
   return url || null
 }
 
@@ -144,7 +174,10 @@ export async function createCartWithItems(
         }
       `,
       variables: {
-        input: { lines: formattedLines }
+        input: {
+          lines: formattedLines,
+          buyerIdentity: { countryCode: 'IN' },
+        }
       }
     })
   })
@@ -152,7 +185,10 @@ export async function createCartWithItems(
   const json = await res.json()
   const cartId = json?.data?.cartCreate?.cart?.id
   const url = json?.data?.cartCreate?.cart?.checkoutUrl || null
-  if (cartId) localStorage.setItem('shopify_cart_id', cartId)
+  if (cartId) {
+    localStorage.setItem('shopify_cart_id', cartId)
+    await applyINRBuyerIdentity(cartId)
+  }
   return url
 }
 
