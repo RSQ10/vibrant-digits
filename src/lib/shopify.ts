@@ -111,11 +111,13 @@ export async function createCheckout(
   const json = await res.json()
   const errors = json?.data?.cartCreate?.userErrors
   const url = json?.data?.cartCreate?.cart?.checkoutUrl
+  const cartId = json?.data?.cartCreate?.cart?.id
 
   if (errors && errors.length > 0) {
     console.error("Cart errors:", errors)
     return null
   }
+  if (cartId) localStorage.setItem('shopify_cart_id', cartId)
   return url || null
 }
 
@@ -148,7 +150,10 @@ export async function createCartWithItems(
   })
 
   const json = await res.json()
-  return json?.data?.cartCreate?.cart?.checkoutUrl || null
+  const cartId = json?.data?.cartCreate?.cart?.id
+  const url = json?.data?.cartCreate?.cart?.checkoutUrl || null
+  if (cartId) localStorage.setItem('shopify_cart_id', cartId)
+  return url
 }
 
 // ── Queries ──
