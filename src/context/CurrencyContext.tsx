@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
 interface CurrencyContextType {
   currencyCode: string;
   currencySymbol: string;
@@ -11,28 +9,13 @@ interface CurrencyContextType {
   isLoading: boolean;
 }
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-// Only USD, EUR and INR supported (as required)
 const SUPPORTED_CURRENCIES: Record<string, { symbol: string }> = {
   USD: { symbol: '$' },
   EUR: { symbol: '€' },
   INR: { symbol: '₹' },
 };
 
-// Country → currency mapping (only supported currencies)
-const COUNTRY_TO_CURRENCY: Record<string, string> = {
-  US: 'USD',
-  DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', NL: 'EUR',
-  PT: 'EUR', BE: 'EUR', AT: 'EUR', FI: 'EUR', IE: 'EUR',
-  GR: 'EUR', SK: 'EUR', SI: 'EUR', LT: 'EUR', LV: 'EUR',
-  EE: 'EUR', LU: 'EUR', MT: 'EUR', CY: 'EUR', HR: 'EUR',
-  IN: 'INR',
-};
-
-const DEFAULT_CURRENCY = 'USD';
-
-// ── Shopify cart buyer identity update ───────────────────────────────────────
+// ── Shopify ───────────────────────────────────────────────────────────────────
 
 const SHOPIFY_DOMAIN = 'gadget-shop-9908.myshopify.com';
 const SHOPIFY_TOKEN = '8231c1471c1a83020e70349c567d217f';
@@ -41,11 +24,6 @@ const SHOPIFY_HEADERS = {
   'Content-Type': 'application/json',
   'X-Shopify-Storefront-Access-Token': SHOPIFY_TOKEN,
 };
-
-function currencyToCountry(code: string): string {
-  const map: Record<string, string> = { USD: 'US', EUR: 'DE', INR: 'IN' };
-  return map[code] || 'US';
-}
 
 async function updateShopifyCartCurrency(cartId: string, currencyCode: string) {
   try {
@@ -63,7 +41,7 @@ async function updateShopifyCartCurrency(cartId: string, currencyCode: string) {
         `,
         variables: {
           cartId,
-          buyerIdentity: { countryCode: currencyToCountry(currencyCode) },
+          buyerIdentity: { countryCode: 'IN' }, // forced India for INR
         },
       }),
     });
@@ -77,22 +55,20 @@ function notifyShopify(currencyCode: string) {
   if (cartId) updateShopifyCartCurrency(cartId, currencyCode);
 }
 
-// ── Context ──────────────────────────────────────────────────────────────────
+// ── Context ───────────────────────────────────────────────────────────────────
 
 const CurrencyContext = createContext<CurrencyContextType>({
-  currencyCode: DEFAULT_CURRENCY,
-  currencySymbol: '$',
+  currencyCode: 'INR',
+  currencySymbol: '₹',
   exchangeRate: 1,
   convertPrice: (p) => p.toFixed(2),
   setCurrency: () => {},
   isLoading: false,
 });
 
-// ── Provider ─────────────────────────────────────────────────────────────────
-
 export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
-  const [currencyCode, setCurrencyCode] = useState(DEFAULT_CURRENCY);
-  const [currencySymbol, setCurrencySymbol] = useState('$');
+  const [currencyCode, setCurrencyCode] = useState('INR');
+  const [currencySymbol, setCurrencySymbol] = useState('₹');
   const [exchangeRate, setExchangeRate] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -114,8 +90,8 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateCurrency = useCallback(async (code: string) => {
-    const safeCode = SUPPORTED_CURRENCIES[code] ? code : DEFAULT_CURRENCY;
-    const symbol = SUPPORTED_CURRENCIES[safeCode]?.symbol ?? '$';
+    const safeCode = SUPPORTED_CURRENCIES[code] ? code : 'INR';
+    const symbol = SUPPORTED_CURRENCIES[safeCode]?.symbol ?? '₹';
     setCurrencyCode(safeCode);
     setCurrencySymbol(symbol);
     localStorage.setItem('preferred_currency', safeCode);
@@ -125,25 +101,9 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    const init = async () => {
-      setIsLoading(true);
-      try {
-        const saved = localStorage.getItem('preferred_currency');
-        if (saved && SUPPORTED_CURRENCIES[saved]) {
-          await updateCurrency(saved);
-          return;
-        }
-        const res = await fetch('https://ipapi.co/json/');
-        const data = await res.json();
-        const detected = COUNTRY_TO_CURRENCY[data.country_code] ?? DEFAULT_CURRENCY;
-        await updateCurrency(detected);
-      } catch {
-        await updateCurrency(DEFAULT_CURRENCY);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    init();
+    // FORCED INR — ignore IP and saved preference
+    localStorage.removeItem('preferred_currency');
+    updateCurrency('INR').finally(() => setIsLoading(false));
   }, [updateCurrency]);
 
   const convertPrice = (priceInUSD: number): string =>
