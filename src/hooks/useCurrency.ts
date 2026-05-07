@@ -12,23 +12,19 @@ const CURRENCY_MAP: Record<string, { code: string; symbol: string }> = {
 };
 
 export const useCurrency = () => {
-  const [currency, setCurrency] = useState({ code: 'INR', symbol: '₹' });
-  const [country, setCountry] = useState('IN');
-  const [loading, setLoading] = useState(true);
+  // ✅ Default forced to USD — no IP detection
+  const [currency, setCurrency] = useState({ code: 'USD', symbol: '$' });
+  const [country, setCountry] = useState('US');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('https://ipapi.co/json/')
-      .then((r) => r.json())
-      .then((data) => {
-        const countryCode = data.country_code;
-        setCountry(countryCode);
-        const detected = CURRENCY_MAP[countryCode] || { code: 'USD', symbol: '$' };
-        setCurrency(detected);
-      })
-      .catch(() => {
-        setCurrency({ code: 'INR', symbol: '₹' });
-      })
-      .finally(() => setLoading(false));
+    // ✅ Check if user manually picked a currency
+    const saved = localStorage.getItem('selected_currency');
+    if (saved && CURRENCY_MAP[saved]) {
+      setCurrency({ code: saved, symbol: CURRENCY_MAP[saved].code });
+    }
+    // ✅ No IP fetch — USD stays as default always
+    setLoading(false);
   }, []);
 
   return { currency, country, loading };
