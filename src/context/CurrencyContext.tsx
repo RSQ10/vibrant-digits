@@ -30,8 +30,8 @@ const CURRENCY_DATA: Record<string, { symbol: string }> = {
 };
 
 export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
-  // ✅ Default USD — no IP detection, no conversion
   const saved = localStorage.getItem('selected_currency') || 'USD';
+
   const [currencyCode, setCurrencyCode] = useState(saved);
   const [currencySymbol, setCurrencySymbol] = useState(
     CURRENCY_DATA[saved]?.symbol || '$'
@@ -44,7 +44,7 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('selected_currency', code);
   };
 
-  // ✅ No conversion — return price as-is with 2 decimal places
+  // ✅ NO conversion — show exactly what Shopify sends
   const convertPrice = (price: number): string => price.toFixed(2);
 
   return (
@@ -52,8 +52,8 @@ export const CurrencyProvider = ({ children }: { children: ReactNode }) => {
       value={{
         currencyCode,
         currencySymbol,
-        exchangeRate: 1,
-        convertPrice,
+        exchangeRate: 1,      // always 1 — no math
+        convertPrice,          // just formats to 2 decimal places
         setCurrency: updateCurrency,
         isLoading: false,
       }}
