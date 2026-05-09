@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Minus, Plus, ShoppingCart, Zap, Star, Truck } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Minus, Plus, ShoppingCart, Zap, Star, Truck, Lock, RotateCcw } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,10 +15,10 @@ function getDeliveryRange(): string {
   const now = new Date();
   const start = new Date(now);
   const end = new Date(now);
-  start.setDate(now.getDate() + 3);
-  end.setDate(now.getDate() + 5);
+  start.setDate(now.getDate() + 5);
+  end.setDate(now.getDate() + 7);
   const fmt = (d: Date) =>
-    d.toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' });
+    d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
@@ -47,6 +47,42 @@ const ProductDetailSkeleton = () => (
     </div>
   </Layout>
 );
+
+// ─── FAQ ──────────────────────────────────────────────────────────────────────
+const ProductFAQ = () => {
+  const [open, setOpen] = useState<number | null>(null);
+  const faqs = [
+    { q: 'How long does shipping take?', a: 'Standard US shipping takes 5–7 business days. Express shipping (2–3 days) is available at checkout.' },
+    { q: 'What is your return policy?', a: 'We offer a 30-day hassle-free return policy. If you\'re not satisfied, contact us and we\'ll make it right.' },
+    { q: 'Is my payment information secure?', a: 'Yes. All payments are processed through Shopify\'s secure checkout with 256-bit SSL encryption.' },
+    { q: 'Do you provide tracking information?', a: 'Yes, you\'ll receive a tracking number via email as soon as your order is dispatched.' },
+    { q: 'What warranty do your products carry?', a: 'All products come with a 6-month warranty against manufacturing defects.' },
+  ];
+
+  return (
+    <div className="pt-6 border-t border-border">
+      <h3 className="text-sm font-semibold text-heading mb-4">Frequently Asked Questions</h3>
+      <div className="space-y-2">
+        {faqs.map((faq, i) => (
+          <div key={i} className="border border-border rounded-lg overflow-hidden">
+            <button
+              onClick={() => setOpen(open === i ? null : i)}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-heading text-left hover:bg-blue-soft transition-colors"
+            >
+              {faq.q}
+              <span className="text-primary ml-2 flex-shrink-0">{open === i ? '−' : '+'}</span>
+            </button>
+            {open === i && (
+              <div className="px-4 pb-3 text-sm text-body leading-relaxed bg-surface">
+                {faq.a}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ProductDetail = () => {
@@ -256,7 +292,7 @@ const ProductDetail = () => {
           {/* Right: Details */}
           <div className="flex flex-col gap-6">
 
-            {/* Title & Tags */}
+            {/* Tags */}
             <div>
               {product.tags?.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -426,6 +462,12 @@ const ProductDetail = () => {
               )}
             </div>
 
+            {/* Secure payment row */}
+            <div className="flex items-center gap-2 justify-center text-xs text-muted-foreground py-1">
+              <Lock className="w-3.5 h-3.5" />
+              <span>Secure payment · Visa · Mastercard · PayPal · Amex</span>
+            </div>
+
             {/* Description */}
             {product.description && (
               <div className="pt-4 border-t border-border">
@@ -439,19 +481,22 @@ const ProductDetail = () => {
             {/* Trust badges */}
             <div className="grid grid-cols-3 gap-3 pt-2">
               {[
-                { icon: '🔒', label: 'Secure Payment' },
-                { icon: '🚚', label: 'Fast Shipping' },
-                { icon: '↩️', label: 'Easy Returns' },
+                { icon: <Lock className="w-4 h-4 text-primary" />, label: 'Secure Payment' },
+                { icon: <Truck className="w-4 h-4 text-primary" />, label: 'Fast Shipping' },
+                { icon: <RotateCcw className="w-4 h-4 text-primary" />, label: '30-Day Returns' },
               ].map((b) => (
                 <div
                   key={b.label}
                   className="flex flex-col items-center gap-1 p-3 rounded-card bg-blue-soft text-center"
                 >
-                  <span className="text-lg">{b.icon}</span>
+                  {b.icon}
                   <span className="text-xs font-medium text-body">{b.label}</span>
                 </div>
               ))}
             </div>
+
+            {/* FAQ */}
+            <ProductFAQ />
 
             {/* Reviews */}
             <ReviewSection
