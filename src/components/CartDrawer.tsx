@@ -1,4 +1,4 @@
-import { ShoppingCart, Trash2, Minus, Plus, X, ArrowRight } from 'lucide-react';
+import { ShoppingCart, Trash2, Minus, Plus, X, ArrowRight, Lock } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/stores/cartStore';
@@ -35,15 +35,10 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
 
   return (
     <>
-      {/* Backdrop */}
       {open && (
-        <div
-          className="fixed inset-0 bg-black/40 z-40 transition-opacity"
-          onClick={onClose}
-        />
+        <div className="fixed inset-0 bg-black/40 z-40 transition-opacity" onClick={onClose} />
       )}
 
-      {/* Drawer */}
       <div
         className={`fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl flex flex-col transition-transform duration-300 ease-in-out ${
           open ? 'translate-x-0' : 'translate-x-full'
@@ -54,7 +49,7 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
           <div className="flex items-center gap-2">
             <ShoppingCart className="w-5 h-5 text-primary" />
             <h2 className="text-lg font-bold text-heading">
-              Cart
+              Your Cart
               {itemCount > 0 && (
                 <span className="ml-2 text-sm font-semibold bg-primary text-primary-foreground rounded-full px-2 py-0.5">
                   {itemCount}
@@ -100,14 +95,9 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
                   key={`${item.variantId}-${index}`}
                   className="flex gap-4 p-4 rounded-card border border-border bg-white hover:shadow-default transition-shadow"
                 >
-                  {/* Image */}
                   <div className="w-20 h-20 rounded-lg overflow-hidden bg-surface flex-shrink-0">
                     {image ? (
-                      <img
-                        src={image}
-                        alt={title}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={image} alt={title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-blue-soft flex items-center justify-center text-xs text-muted-foreground">
                         No img
@@ -115,14 +105,12 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
                     )}
                   </div>
 
-                  {/* Details */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-heading truncate">{title}</p>
                     {item.variantTitle && item.variantTitle !== 'Default Title' && (
                       <p className="text-xs text-muted-foreground mt-0.5">{item.variantTitle}</p>
                     )}
 
-                    {/* Quantity controls */}
                     <div className="flex items-center justify-between mt-3">
                       <div className="inline-flex items-center border border-border rounded-pill overflow-hidden">
                         <button
@@ -167,16 +155,21 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
         {/* Footer */}
         {items.length > 0 && (
           <div className="border-t border-border px-6 py-5 space-y-4 bg-white">
-            {/* Subtotal */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Subtotal</span>
               <span className="text-lg font-bold text-heading">{currencySymbol}{convertPrice(total)}</span>
             </div>
             <p className="text-xs text-muted-foreground -mt-2">
-              Shipping & taxes calculated at checkout
+              Taxes and shipping calculated at checkout
             </p>
 
-            {/* Checkout Button */}
+            {/* Secure payment icons */}
+            <div className="flex items-center gap-2 justify-center py-1">
+              <Lock className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Secure checkout</span>
+              <span className="text-xs text-muted-foreground ml-1">· Visa · Mastercard · PayPal · Amex</span>
+            </div>
+
             <Button
               onClick={handleCheckout}
               disabled={checkoutLoading || !checkoutUrl}
@@ -195,7 +188,6 @@ const CartDrawer = ({ open, onClose }: CartDrawerProps) => {
               )}
             </Button>
 
-            {/* Continue shopping */}
             <button
               onClick={onClose}
               className="w-full text-sm text-primary font-medium hover:underline transition-all"
