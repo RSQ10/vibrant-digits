@@ -56,13 +56,13 @@ const sections = [
       'You have the right to access the personal data we hold about you',
       'You can request correction or deletion of your personal data',
       'You can opt out of marketing emails at any time via unsubscribe link',
-      'To exercise any of these rights, contact yorrichijr@gmail.com',
+      'To exercise any of these rights, contact support@glow-gadget.shop',
     ],
   },
   {
     title: '7. Contact Us',
     content: [
-      'For any privacy-related questions or concerns, please contact us at yorrichijr@gmail.com',
+      'For any privacy-related questions or concerns, please contact us at support@glow-gadget.shop',
       'We will respond to all privacy enquiries within 48 hours',
       'Responsible party: Nishk Kumar Shinde, Bhim Nagar Supela, Bhilai, Durg, Chhattisgarh, India',
     ],
@@ -130,11 +130,11 @@ const PrivacyPolicy = () => (
       <div className="text-center">
         <p className="text-body mb-3">Questions about this privacy policy?</p>
         <a
-          href="mailto:yorrichijr@gmail.com"
+          href="mailto:support@glow-gadget.shop"
           className="inline-flex items-center gap-2 bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-pill hover:bg-primary/90 transition-colors"
         >
           <Mail className="w-4 h-4" />
-          yorrichijr@gmail.com
+          support@glow-gadget.shop
         </a>
       </div>
 
