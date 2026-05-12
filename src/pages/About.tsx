@@ -107,10 +107,10 @@ const About = () => (
           If something goes wrong with your order — wrong item, damaged product, late delivery — reach out and we'll fix it. No runaround. We're a small team and we take every order personally. That's not a marketing line, it's just how we work.
         </p>
         <a
-          href="mailto:yorrichijr@gmail.com"
+          href="mailto:support@glow-gadget.shop"
           className="inline-block mt-5 text-sm font-semibold text-primary hover:underline"
         >
-          yorrichijr@gmail.com →
+          support@glow-gadget.shop →
         </a>
       </div>
     </motion.div>
