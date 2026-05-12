@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import logo from '@/assets/logo.jpg';
+import logo from '@/assets/logo.svg';
 
 const YoutubeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
@@ -91,8 +91,8 @@ export const Footer = () => (
         <div>
           <h4 className="text-sm font-semibold text-heading mb-4">Contact</h4>
           <div className="flex flex-col gap-2 text-sm text-body">
-            <a href="mailto:yorrichijr@gmail.com" className="hover:text-primary transition-colors">
-              📧 yorrichijr@gmail.com
+            <a href="mailto:support@glow-gadget.shop" className="hover:text-primary transition-colors">
+              📧 support@glow-gadget.shop
             </a>
             <span>🕐 Response within 24–48 hours</span>
             <span>🚚 Free US shipping over $50</span>
